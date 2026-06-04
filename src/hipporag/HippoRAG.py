@@ -814,21 +814,22 @@ class HippoRAG:
             current_graph_nodes = set()
 
         num_new_chunks = 0
-
         logger.info(f"Connecting passage nodes to phrase nodes.")
 
-        for chunk_key in tqdm(chunk_ids):
+        for idx, chunk_key in tqdm(enumerate(chunk_ids)):
             doc_text = self.chunk_embedding_store.get_row(chunk_key)["content"]
             meta = self.text_to_meta.get(doc_text, (0, 'Unknown'))
             t_time = meta[0]
             t_prov = meta[1]
 
             if chunk_key not in current_graph_nodes:
-                for chunk_ent in chunk_triple_entities[chunk_ids.index(chunk_key)]:
+                for chunk_ent in chunk_triple_entities[idx]:
                     node_key = compute_mdhash_id(chunk_ent, prefix="entity-")
 
                     self.node_to_node_stats[(chunk_key, node_key)] = 1.0
                     self.node_to_node_temporal[(chunk_key, node_key)] = (t_time, t_prov)
+
+                num_new_chunks += 1
 
         return num_new_chunks
 
