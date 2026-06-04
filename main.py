@@ -91,6 +91,8 @@ def main():
         corpus = json.load(f)
 
     docs = [f"{doc['title']}\n{doc['text']}" for doc in corpus]
+    doc_timestamps = [doc.get('timestamp', 0) for doc in corpus]
+    doc_provenances = [doc.get('provenance', doc['title']) for doc in corpus]
 
     force_index_from_scratch = string_to_bool(args.force_index_from_scratch)
     force_openie_from_scratch = string_to_bool(args.force_openie_from_scratch)
@@ -128,7 +130,7 @@ def main():
 
     logging.basicConfig(level=logging.INFO)
     hipporag = HippoRAG(global_config=config)
-    hipporag.index(docs)
+    hipporag.index(docs, doc_timestamps=doc_timestamps, doc_provenances=doc_provenances)
     
     res = hipporag.rag_qa(queries=all_queries, gold_docs=gold_docs, gold_answers=gold_answers)
     

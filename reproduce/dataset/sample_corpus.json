@@ -1,34 +1,50 @@
 [
   {
     "title": "Python (programming language)",
-    "text": "Python is a high-level, general-purpose programming language. Its design philosophy emphasizes code readability with the use of significant indentation. Python was created by Guido van Rossum and first released in 1991."
+    "text": "Python is a high-level, general-purpose programming language. Its design philosophy emphasizes code readability with the use of significant indentation. Python was created by Guido van Rossum and first released in 1991.",
+    "timestamp": 1991,
+    "provenance": "Python_Official_History_1991"
   },
   {
     "title": "Guido van Rossum",
-    "text": "Guido van Rossum is a Dutch programmer best known as the creator of the Python programming language. He attended the University of Amsterdam, where he received a master's degree in mathematics and computer science in 1982."
+    "text": "Guido van Rossum is a Dutch programmer best known as the creator of the Python programming language. He attended the University of Amsterdam, where he received a master's degree in mathematics and computer science in 1982.",
+    "timestamp": 1982,
+    "provenance": "UvA_Alumni_Archive_1982"
   },
   {
     "title": "University of Amsterdam",
-    "text": "The University of Amsterdam is a public research university located in Amsterdam, Netherlands. Established in 1632, it is the third-oldest university in the Netherlands."
+    "text": "The University of Amsterdam is a public research university located in Amsterdam, Netherlands. Established in 1632, it is the third-oldest university in the Netherlands.",
+    "timestamp": 1632,
+    "provenance": "Netherlands_Education_Registry"
   },
   {
     "title": "Transformer (deep learning model)",
-    "text": "The Transformer is a deep learning architecture introduced in 2017 by researchers at Google. The seminal paper Attention Is All You Need was co-authored by Ashish Vaswani, Noam Shazeer, Niki Parmar, and Jakob Uszkoreit."
+    "text": "The Transformer is a deep learning architecture introduced in 2017 by researchers at Google. The seminal paper Attention Is All You Need was co-authored by Ashish Vaswani, Noam Shazeer, Niki Parmar, and Jakob Uszkoreit.",
+    "timestamp": 2017,
+    "provenance": "Google_Brain_Attention_Paper_2017"
   },
   {
     "title": "Ashish Vaswani",
-    "text": "Ashish Vaswani is a computer scientist known for his work in deep learning. He completed his PhD in Computer Science at the University of Southern California (USC) before joining Google Brain as a research scientist."
+    "text": "Ashish Vaswani is a computer scientist known for his work in deep learning. He completed his PhD in Computer Science at the University of Southern California (USC) before joining Google Brain as a research scientist.",
+    "timestamp": 2014,
+    "provenance": "USC_Graduate_Thesis_2014"
   },
   {
     "title": "University of Southern California",
-    "text": "The University of Southern California (USC) is a private research university in Los Angeles, California. Founded in 1880, it is the oldest private research university in California."
+    "text": "The University of Southern California (USC) is a private research university in Los Angeles, California. Founded in 1880, it is the oldest private research university in California.",
+    "timestamp": 1880,
+    "provenance": "California_Higher_Education_Record"
   },
   {
     "title": "Oppenheimer (film)",
-    "text": "Oppenheimer is a 2023 biographical drama film written and directed by Christopher Nolan. The film won seven Academy Awards at the 96th Oscars, including the prestigious Best Picture award."
+    "text": "Oppenheimer is a 2023 biographical drama film written and directed by Christopher Nolan. The film won seven Academy Awards at the 96th Oscars, including the prestigious Best Picture award.",
+    "timestamp": 2023,
+    "provenance": "Academy_Awards_96th_Oscars"
   },
   {
     "title": "Christopher Nolan",
-    "text": "Christopher Nolan is a British-American filmmaker known for his Hollywood blockbusters with complex storytelling. He directed critically acclaimed films like Inception, Interstellar, and Oppenheimer."
+    "text": "Christopher Nolan is a British-American filmmaker known for his Hollywood blockbusters with complex storytelling. He directed critically acclaimed films like Inception, Interstellar, and Oppenheimer.",
+    "timestamp": 2024,
+    "provenance": "Hollywood_Directors_Guild_Registry"
   }
 ]

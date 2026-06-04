@@ -215,7 +215,7 @@ class HippoRAG:
 
         assert False, logger.info('Done with OpenIE, run online indexing for future retrieval.')
 
-    def index(self, docs: List[str]):
+    def index(self, docs: List[str], doc_timestamps: list = None, doc_provenances: list = None):
         """
         Indexes the given documents based on the HippoRAG 2 framework which generates an OpenIE knowledge graph
         based on the given documents and encodes passages, entities and facts separately for later retrieval.
@@ -226,6 +226,10 @@ class HippoRAG:
         """
 
         logger.info(f"Indexing Documents")
+
+        self.doc_timestamps = doc_timestamps if doc_timestamps else [0] * len(docs)
+        self.doc_provenances = doc_provenances if doc_provenances else ['Unknown'] * len(docs)
+        self.text_to_meta = {doc: (self.doc_timestamps[i], self.doc_provenances[i]) for i, doc in enumerate(docs)}
 
         logger.info(f"Performing OpenIE")
 
@@ -249,7 +253,6 @@ class HippoRAG:
 
         assert len(chunk_to_rows) == len(ner_results_dict) == len(triple_results_dict), f"len(chunk_to_rows): {len(chunk_to_rows)}, len(ner_results_dict): {len(ner_results_dict)}, len(triple_results_dict): {len(triple_results_dict)}"
 
-        # prepare data_store
         chunk_ids = list(chunk_to_rows.keys())
 
         chunk_triples = [[text_processing(t) for t in triple_results_dict[chunk_id].triples] for chunk_id in chunk_ids]
@@ -752,9 +755,14 @@ class HippoRAG:
             current_graph_nodes = set()
 
         logger.info(f"Adding OpenIE triples to graph.")
+        self.node_to_node_temporal = {}
 
         for chunk_key, triples in tqdm(zip(chunk_ids, chunk_triples)):
             entities_in_chunk = set()
+            doc_text = self.chunk_embedding_store.get_row(chunk_key)["content"]
+            meta = self.text_to_meta.get(doc_text, (0, 'Unknown'))
+            t_time = meta[0]
+            t_prov = meta[1]
 
             if chunk_key not in current_graph_nodes:
                 for triple in triples:
@@ -767,6 +775,9 @@ class HippoRAG:
                         (node_key, node_2_key), 0.0) + 1
                     self.node_to_node_stats[(node_2_key, node_key)] = self.node_to_node_stats.get(
                         (node_2_key, node_key), 0.0) + 1
+
+                    self.node_to_node_temporal[(node_key, node_2_key)] = (t_time, t_prov)
+                    self.node_to_node_temporal[(node_2_key, node_key)] = (t_time, t_prov)
 
                     entities_in_chunk.add(node_key)
                     entities_in_chunk.add(node_2_key)
@@ -806,15 +817,18 @@ class HippoRAG:
 
         logger.info(f"Connecting passage nodes to phrase nodes.")
 
-        for idx, chunk_key in tqdm(enumerate(chunk_ids)):
+        for chunk_key in tqdm(chunk_ids):
+            doc_text = self.chunk_embedding_store.get_row(chunk_key)["content"]
+            meta = self.text_to_meta.get(doc_text, (0, 'Unknown'))
+            t_time = meta[0]
+            t_prov = meta[1]
 
             if chunk_key not in current_graph_nodes:
-                for chunk_ent in chunk_triple_entities[idx]:
+                for chunk_ent in chunk_triple_entities[chunk_ids.index(chunk_key)]:
                     node_key = compute_mdhash_id(chunk_ent, prefix="entity-")
 
                     self.node_to_node_stats[(chunk_key, node_key)] = 1.0
-
-                num_new_chunks += 1
+                    self.node_to_node_temporal[(chunk_key, node_key)] = (t_time, t_prov)
 
         return num_new_chunks
 
@@ -1071,13 +1085,17 @@ class HippoRAG:
                 "weight": weight
             })
 
-        valid_edges, valid_weights = [], {"weight": []}
+        valid_edges, valid_weights = [], {"weight": [], "timestamp": [], "provenance": []}
         current_node_ids = set(self.graph.vs["name"])
         for source_node_id, target_node_id, edge_d in zip(edge_source_node_keys, edge_target_node_keys, edge_metadata):
             if source_node_id in current_node_ids and target_node_id in current_node_ids:
                 valid_edges.append((source_node_id, target_node_id))
                 weight = edge_d.get("weight", 1.0)
                 valid_weights["weight"].append(weight)
+                
+                meta = self.node_to_node_temporal.get((source_node_id, target_node_id), (0, 'Unknown'))
+                valid_weights["timestamp"].append(meta[0])
+                valid_weights["provenance"].append(meta[1])
             else:
                 logger.warning(f"Edge {source_node_id} -> {target_node_id} is not valid.")
         self.graph.add_edges(

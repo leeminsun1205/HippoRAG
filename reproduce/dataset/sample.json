@@ -2,6 +2,7 @@
   {
     "question": "Which university did the creator of the Python programming language attend?",
     "answer": "University of Amsterdam",
+    "query_timestamp": 2026,
     "paragraphs": [
       {
         "title": "Python (programming language)",
@@ -23,6 +24,7 @@
   {
     "question": "In which city is the university located where one of the co-authors of the Transformer architecture completed his PhD?",
     "answer": "Los Angeles",
+    "query_timestamp": 2026,
     "paragraphs": [
       {
         "title": "Transformer (deep learning model)",
@@ -49,6 +51,7 @@
   {
     "question": "Who directed the movie that won the Academy Award for Best Picture in 2023?",
     "answer": "Christopher Nolan",
+    "query_timestamp": 2026,
     "paragraphs": [
       {
         "title": "Oppenheimer (film)",
