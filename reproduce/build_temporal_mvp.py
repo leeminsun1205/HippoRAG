@@ -186,12 +186,14 @@ def build_corpus():
     for claim in VERSIONED_CLAIMS:
         for i, v in enumerate(claim["versions"], start=1):
             add({"title": v["title"], "text": v["text"], "timestamp": v["timestamp"],
-                 "valid_from": v["valid_from"], "valid_to": v["valid_to"], "provenance": v["provenance"]},
+                 "valid_from": v["valid_from"], "valid_to": v["valid_to"], "provenance": v["provenance"],
+                 "value": v["value"]},
                 claim["claim_id"], i, v["valid_to"])
 
     for c in STATIC_CLAIMS + DISTRACTORS:
         add({"title": c["title"], "text": c["text"], "timestamp": c["timestamp"],
-             "valid_from": c["valid_from"], "valid_to": c["valid_to"], "provenance": c["provenance"]},
+             "valid_from": c["valid_from"], "valid_to": c["valid_to"], "provenance": c["provenance"],
+             "value": c["value"]},
             c["claim_id"], 1, c["valid_to"])
 
     # Shuffle so versions of the same claim aren't trivially adjacent, then idx.
@@ -293,6 +295,13 @@ def build_questions(registry):
          [("productb_category", 1, True)]),
     ]
 
+    # map claim_id -> {version: value}, used to derive the "stale" (wrong-version)
+    # answer for stale-rate. Only meaningful where the answer IS the claim value.
+    claim_values = {}
+    for (cid, ver), p in registry.items():
+        claim_values.setdefault(cid, {})[ver] = p.get("value")
+    STALE_CATEGORIES = {"latest_wins", "conflict", "time_specific"}
+
     counters = {}
     questions = []
     for category, question, answer, q_time, gold_claim_id, gold_version, supporting in SPECS:
@@ -305,6 +314,15 @@ def build_questions(registry):
                 "is_supporting": is_supporting,
             })
         gold_passage = registry[(gold_claim_id, gold_version)]
+
+        # stale_answers = values of the OTHER versions of the same claim (the
+        # answer a temporally-unaware system would give). Empty for control /
+        # multihop (where the answer is not the claim value itself).
+        stale_answers = []
+        if category in STALE_CATEGORIES:
+            stale_answers = [v for ver, v in claim_values.get(gold_claim_id, {}).items()
+                             if ver != gold_version and v is not None]
+
         questions.append({
             "id": f"tq/{category}/q{counters[category]}",
             "question": question,
@@ -314,6 +332,7 @@ def build_questions(registry):
             "question_time": q_time,
             "gold_timestamp": gold_passage["timestamp"],
             "gold_claim_id": gold_claim_id,
+            "stale_answers": stale_answers,
         })
     return questions
 

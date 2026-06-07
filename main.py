@@ -136,10 +136,20 @@ def main():
     hipporag.index(docs, doc_timestamps=doc_timestamps, doc_provenances=doc_provenances)
     
     res = hipporag.rag_qa(queries=all_queries, gold_docs=gold_docs, gold_answers=gold_answers)
-    
+
+    # Save per-question predictions so offline analysis (e.g. reproduce/eval_temporal.py)
+    # can compute per-category / stale-rate metrics without re-running inference.
+    # Named by the temporal_weighting flag so on/off A/B runs don't overwrite.
+    queries_solutions = res[0]
+    tw_flag = 'on' if config.temporal_weighting else 'off'
+    pred_path = os.path.join(save_dir, f"predictions_tw_{tw_flag}.json")
+    with open(pred_path, "w") as f:
+        json.dump([qs.to_dict() for qs in queries_solutions], f, indent=2)
+
     print("\n" + "="*10 + " EVALUATION METRICS " + "="*10)
     print("Retrieval Metrics:", res[3] if len(res) == 5 else "N/A")
     print("QA Metrics:", res[4] if len(res) == 5 else "N/A")
+    print(f"Saved predictions to {pred_path}")
     print("="*40)
 
 if __name__ == "__main__":

@@ -22,7 +22,10 @@
     "category": "latest_wins",
     "question_time": 2024,
     "gold_timestamp": 2021,
-    "gold_claim_id": "alice_role"
+    "gold_claim_id": "alice_role",
+    "stale_answers": [
+      "Engineer"
+    ]
   },
   {
     "id": "tq/latest_wins/q2",
@@ -47,7 +50,10 @@
     "category": "latest_wins",
     "question_time": 2024,
     "gold_timestamp": 2020,
-    "gold_claim_id": "bob_team"
+    "gold_claim_id": "bob_team",
+    "stale_answers": [
+      "Team Alpha"
+    ]
   },
   {
     "id": "tq/latest_wins/q3",
@@ -72,7 +78,10 @@
     "category": "latest_wins",
     "question_time": 2024,
     "gold_timestamp": 2020,
-    "gold_claim_id": "hq_city"
+    "gold_claim_id": "hq_city",
+    "stale_answers": [
+      "Boston"
+    ]
   },
   {
     "id": "tq/latest_wins/q4",
@@ -97,7 +106,10 @@
     "category": "latest_wins",
     "question_time": 2024,
     "gold_timestamp": 2021,
-    "gold_claim_id": "projectx_owner"
+    "gold_claim_id": "projectx_owner",
+    "stale_answers": [
+      "Alice"
+    ]
   },
   {
     "id": "tq/latest_wins/q5",
@@ -122,7 +134,10 @@
     "category": "latest_wins",
     "question_time": 2024,
     "gold_timestamp": 2021,
-    "gold_claim_id": "vacation_days"
+    "gold_claim_id": "vacation_days",
+    "stale_answers": [
+      "15"
+    ]
   },
   {
     "id": "tq/latest_wins/q6",
@@ -147,7 +162,10 @@
     "category": "latest_wins",
     "question_time": 2024,
     "gold_timestamp": 2020,
-    "gold_claim_id": "grace_title"
+    "gold_claim_id": "grace_title",
+    "stale_answers": [
+      "Analyst"
+    ]
   },
   {
     "id": "tq/latest_wins/q7",
@@ -172,7 +190,10 @@
     "category": "latest_wins",
     "question_time": 2024,
     "gold_timestamp": 2021,
-    "gold_claim_id": "flagship"
+    "gold_claim_id": "flagship",
+    "stale_answers": [
+      "ProductA"
+    ]
   },
   {
     "id": "tq/latest_wins/q8",
@@ -197,7 +218,10 @@
     "category": "latest_wins",
     "question_time": 2024,
     "gold_timestamp": 2020,
-    "gold_claim_id": "bob_manager"
+    "gold_claim_id": "bob_manager",
+    "stale_answers": [
+      "Carol"
+    ]
   },
   {
     "id": "tq/latest_wins/q9",
@@ -222,7 +246,10 @@
     "category": "latest_wins",
     "question_time": 2024,
     "gold_timestamp": 2019,
-    "gold_claim_id": "office_count"
+    "gold_claim_id": "office_count",
+    "stale_answers": [
+      "3"
+    ]
   },
   {
     "id": "tq/latest_wins/q10",
@@ -247,7 +274,10 @@
     "category": "latest_wins",
     "question_time": 2024,
     "gold_timestamp": 2020,
-    "gold_claim_id": "ceo"
+    "gold_claim_id": "ceo",
+    "stale_answers": [
+      "Helen"
+    ]
   },
   {
     "id": "tq/time_specific/q1",
@@ -272,7 +302,10 @@
     "category": "time_specific",
     "question_time": 2019,
     "gold_timestamp": 2018,
-    "gold_claim_id": "alice_role"
+    "gold_claim_id": "alice_role",
+    "stale_answers": [
+      "Manager"
+    ]
   },
   {
     "id": "tq/time_specific/q2",
@@ -297,7 +330,10 @@
     "category": "time_specific",
     "question_time": 2018,
     "gold_timestamp": 2017,
-    "gold_claim_id": "bob_team"
+    "gold_claim_id": "bob_team",
+    "stale_answers": [
+      "Team Beta"
+    ]
   },
   {
     "id": "tq/time_specific/q3",
@@ -322,7 +358,10 @@
     "category": "time_specific",
     "question_time": 2017,
     "gold_timestamp": 2015,
-    "gold_claim_id": "hq_city"
+    "gold_claim_id": "hq_city",
+    "stale_answers": [
+      "Denver"
+    ]
   },
   {
     "id": "tq/time_specific/q4",
@@ -347,7 +386,10 @@
     "category": "time_specific",
     "question_time": 2020,
     "gold_timestamp": 2019,
-    "gold_claim_id": "projectx_owner"
+    "gold_claim_id": "projectx_owner",
+    "stale_answers": [
+      "Eve"
+    ]
   },
   {
     "id": "tq/time_specific/q5",
@@ -372,7 +414,10 @@
     "category": "time_specific",
     "question_time": 2018,
     "gold_timestamp": 2016,
-    "gold_claim_id": "vacation_days"
+    "gold_claim_id": "vacation_days",
+    "stale_answers": [
+      "20"
+    ]
   },
   {
     "id": "tq/time_specific/q6",
@@ -397,7 +442,10 @@
     "category": "time_specific",
     "question_time": 2018,
     "gold_timestamp": 2017,
-    "gold_claim_id": "grace_title"
+    "gold_claim_id": "grace_title",
+    "stale_answers": [
+      "Lead Analyst"
+    ]
   },
   {
     "id": "tq/time_specific/q7",
@@ -422,7 +470,10 @@
     "category": "time_specific",
     "question_time": 2015,
     "gold_timestamp": 2012,
-    "gold_claim_id": "ceo"
+    "gold_claim_id": "ceo",
+    "stale_answers": [
+      "Ian"
+    ]
   },
   {
     "id": "tq/time_specific/q8",
@@ -447,7 +498,10 @@
     "category": "time_specific",
     "question_time": 2016,
     "gold_timestamp": 2015,
-    "gold_claim_id": "office_count"
+    "gold_claim_id": "office_count",
+    "stale_answers": [
+      "5"
+    ]
   },
   {
     "id": "tq/multihop_updated/q1",
@@ -472,7 +526,8 @@
     "category": "multihop_updated",
     "question_time": 2024,
     "gold_timestamp": 2021,
-    "gold_claim_id": "projectx_owner"
+    "gold_claim_id": "projectx_owner",
+    "stale_answers": []
   },
   {
     "id": "tq/multihop_updated/q2",
@@ -497,7 +552,8 @@
     "category": "multihop_updated",
     "question_time": 2024,
     "gold_timestamp": 2020,
-    "gold_claim_id": "bob_team"
+    "gold_claim_id": "bob_team",
+    "stale_answers": []
   },
   {
     "id": "tq/multihop_updated/q3",
@@ -522,7 +578,8 @@
     "category": "multihop_updated",
     "question_time": 2024,
     "gold_timestamp": 2020,
-    "gold_claim_id": "hq_city"
+    "gold_claim_id": "hq_city",
+    "stale_answers": []
   },
   {
     "id": "tq/multihop_updated/q4",
@@ -547,7 +604,8 @@
     "category": "multihop_updated",
     "question_time": 2024,
     "gold_timestamp": 2020,
-    "gold_claim_id": "ceo"
+    "gold_claim_id": "ceo",
+    "stale_answers": []
   },
   {
     "id": "tq/multihop_updated/q5",
@@ -572,7 +630,8 @@
     "category": "multihop_updated",
     "question_time": 2024,
     "gold_timestamp": 2021,
-    "gold_claim_id": "flagship"
+    "gold_claim_id": "flagship",
+    "stale_answers": []
   },
   {
     "id": "tq/multihop_updated/q6",
@@ -597,7 +656,8 @@
     "category": "multihop_updated",
     "question_time": 2024,
     "gold_timestamp": 2020,
-    "gold_claim_id": "bob_manager"
+    "gold_claim_id": "bob_manager",
+    "stale_answers": []
   },
   {
     "id": "tq/conflict/q1",
@@ -622,7 +682,10 @@
     "category": "conflict",
     "question_time": 2024,
     "gold_timestamp": 2021,
-    "gold_claim_id": "vacation_days"
+    "gold_claim_id": "vacation_days",
+    "stale_answers": [
+      "15"
+    ]
   },
   {
     "id": "tq/conflict/q2",
@@ -647,7 +710,10 @@
     "category": "conflict",
     "question_time": 2024,
     "gold_timestamp": 2021,
-    "gold_claim_id": "alice_role"
+    "gold_claim_id": "alice_role",
+    "stale_answers": [
+      "Engineer"
+    ]
   },
   {
     "id": "tq/conflict/q3",
@@ -672,7 +738,10 @@
     "category": "conflict",
     "question_time": 2024,
     "gold_timestamp": 2020,
-    "gold_claim_id": "ceo"
+    "gold_claim_id": "ceo",
+    "stale_answers": [
+      "Helen"
+    ]
   },
   {
     "id": "tq/conflict/q4",
@@ -697,7 +766,10 @@
     "category": "conflict",
     "question_time": 2024,
     "gold_timestamp": 2021,
-    "gold_claim_id": "flagship"
+    "gold_claim_id": "flagship",
+    "stale_answers": [
+      "ProductA"
+    ]
   },
   {
     "id": "tq/conflict/q5",
@@ -722,7 +794,10 @@
     "category": "conflict",
     "question_time": 2024,
     "gold_timestamp": 2020,
-    "gold_claim_id": "hq_city"
+    "gold_claim_id": "hq_city",
+    "stale_answers": [
+      "Boston"
+    ]
   },
   {
     "id": "tq/conflict/q6",
@@ -747,7 +822,10 @@
     "category": "conflict",
     "question_time": 2024,
     "gold_timestamp": 2019,
-    "gold_claim_id": "office_count"
+    "gold_claim_id": "office_count",
+    "stale_answers": [
+      "3"
+    ]
   },
   {
     "id": "tq/control/q1",
@@ -766,7 +844,8 @@
     "category": "control",
     "question_time": 2024,
     "gold_timestamp": 2010,
-    "gold_claim_id": "carol_role"
+    "gold_claim_id": "carol_role",
+    "stale_answers": []
   },
   {
     "id": "tq/control/q2",
@@ -785,7 +864,8 @@
     "category": "control",
     "question_time": 2024,
     "gold_timestamp": 2008,
-    "gold_claim_id": "company_founded"
+    "gold_claim_id": "company_founded",
+    "stale_answers": []
   },
   {
     "id": "tq/control/q3",
@@ -804,7 +884,8 @@
     "category": "control",
     "question_time": 2024,
     "gold_timestamp": 2021,
-    "gold_claim_id": "eve_role"
+    "gold_claim_id": "eve_role",
+    "stale_answers": []
   },
   {
     "id": "tq/control/q4",
@@ -823,7 +904,8 @@
     "category": "control",
     "question_time": 2024,
     "gold_timestamp": 2020,
-    "gold_claim_id": "beta_lead"
+    "gold_claim_id": "beta_lead",
+    "stale_answers": []
   },
   {
     "id": "tq/control/q5",
@@ -842,7 +924,8 @@
     "category": "control",
     "question_time": 2024,
     "gold_timestamp": 2015,
-    "gold_claim_id": "denver_country"
+    "gold_claim_id": "denver_country",
+    "stale_answers": []
   },
   {
     "id": "tq/control/q6",
@@ -861,6 +944,7 @@
     "category": "control",
     "question_time": 2024,
     "gold_timestamp": 2021,
-    "gold_claim_id": "productb_category"
+    "gold_claim_id": "productb_category",
+    "stale_answers": []
   }
 ]
