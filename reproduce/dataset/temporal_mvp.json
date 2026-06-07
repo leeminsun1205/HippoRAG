@@ -1,0 +1,866 @@
+[
+  {
+    "id": "tq/latest_wins/q1",
+    "question": "What is Alice's current role?",
+    "answer": [
+      "Manager"
+    ],
+    "paragraphs": [
+      {
+        "title": "HR Record 2021 - Alice",
+        "text": "As of 2021, Alice works as a Manager at the company.",
+        "idx": 31,
+        "is_supporting": true
+      },
+      {
+        "title": "HR Record 2018 - Alice",
+        "text": "In 2018, Alice worked as an Engineer at the company.",
+        "idx": 17,
+        "is_supporting": false
+      }
+    ],
+    "category": "latest_wins",
+    "question_time": 2024,
+    "gold_timestamp": 2021,
+    "gold_claim_id": "alice_role"
+  },
+  {
+    "id": "tq/latest_wins/q2",
+    "question": "What team is Bob currently on?",
+    "answer": [
+      "Team Beta"
+    ],
+    "paragraphs": [
+      {
+        "title": "Org Chart 2020 - Bob",
+        "text": "Since 2020, Bob is a member of Team Beta.",
+        "idx": 24,
+        "is_supporting": true
+      },
+      {
+        "title": "Org Chart 2017 - Bob",
+        "text": "In 2017, Bob was a member of Team Alpha.",
+        "idx": 21,
+        "is_supporting": false
+      }
+    ],
+    "category": "latest_wins",
+    "question_time": 2024,
+    "gold_timestamp": 2020,
+    "gold_claim_id": "bob_team"
+  },
+  {
+    "id": "tq/latest_wins/q3",
+    "question": "In which city is the company headquarters currently located?",
+    "answer": [
+      "Denver"
+    ],
+    "paragraphs": [
+      {
+        "title": "Facilities Report 2020",
+        "text": "Since 2020, the company headquarters is located in Denver.",
+        "idx": 1,
+        "is_supporting": true
+      },
+      {
+        "title": "Facilities Report 2015",
+        "text": "In 2015, the company headquarters was located in Boston.",
+        "idx": 26,
+        "is_supporting": false
+      }
+    ],
+    "category": "latest_wins",
+    "question_time": 2024,
+    "gold_timestamp": 2020,
+    "gold_claim_id": "hq_city"
+  },
+  {
+    "id": "tq/latest_wins/q4",
+    "question": "Who currently owns Project X?",
+    "answer": [
+      "Eve"
+    ],
+    "paragraphs": [
+      {
+        "title": "Project X Charter 2021",
+        "text": "As of 2021, Project X is owned by Eve.",
+        "idx": 32,
+        "is_supporting": true
+      },
+      {
+        "title": "Project X Charter 2019",
+        "text": "In 2019, Project X was owned by Alice.",
+        "idx": 15,
+        "is_supporting": false
+      }
+    ],
+    "category": "latest_wins",
+    "question_time": 2024,
+    "gold_timestamp": 2021,
+    "gold_claim_id": "projectx_owner"
+  },
+  {
+    "id": "tq/latest_wins/q5",
+    "question": "How many vacation days do employees currently receive per year?",
+    "answer": [
+      "20"
+    ],
+    "paragraphs": [
+      {
+        "title": "Leave Policy 2021",
+        "text": "Since 2021, employees receive 20 vacation days per year.",
+        "idx": 12,
+        "is_supporting": true
+      },
+      {
+        "title": "Leave Policy 2016",
+        "text": "In 2016, employees received 15 vacation days per year.",
+        "idx": 29,
+        "is_supporting": false
+      }
+    ],
+    "category": "latest_wins",
+    "question_time": 2024,
+    "gold_timestamp": 2021,
+    "gold_claim_id": "vacation_days"
+  },
+  {
+    "id": "tq/latest_wins/q6",
+    "question": "What is Grace's current title?",
+    "answer": [
+      "Lead Analyst"
+    ],
+    "paragraphs": [
+      {
+        "title": "HR Record 2020 - Grace",
+        "text": "Since 2020, Grace holds the title of Lead Analyst.",
+        "idx": 2,
+        "is_supporting": true
+      },
+      {
+        "title": "HR Record 2017 - Grace",
+        "text": "In 2017, Grace held the title of Analyst.",
+        "idx": 8,
+        "is_supporting": false
+      }
+    ],
+    "category": "latest_wins",
+    "question_time": 2024,
+    "gold_timestamp": 2020,
+    "gold_claim_id": "grace_title"
+  },
+  {
+    "id": "tq/latest_wins/q7",
+    "question": "What is the company's current flagship product?",
+    "answer": [
+      "ProductB"
+    ],
+    "paragraphs": [
+      {
+        "title": "Product Catalog 2021",
+        "text": "Since 2021, the company's flagship product is ProductB.",
+        "idx": 19,
+        "is_supporting": true
+      },
+      {
+        "title": "Product Catalog 2016",
+        "text": "In 2016, the company's flagship product was ProductA.",
+        "idx": 5,
+        "is_supporting": false
+      }
+    ],
+    "category": "latest_wins",
+    "question_time": 2024,
+    "gold_timestamp": 2021,
+    "gold_claim_id": "flagship"
+  },
+  {
+    "id": "tq/latest_wins/q8",
+    "question": "Who is Bob's current manager?",
+    "answer": [
+      "David"
+    ],
+    "paragraphs": [
+      {
+        "title": "Reporting Lines 2020",
+        "text": "Since 2020, Bob's manager is David.",
+        "idx": 7,
+        "is_supporting": true
+      },
+      {
+        "title": "Reporting Lines 2017",
+        "text": "In 2017, Bob's manager was Carol.",
+        "idx": 9,
+        "is_supporting": false
+      }
+    ],
+    "category": "latest_wins",
+    "question_time": 2024,
+    "gold_timestamp": 2020,
+    "gold_claim_id": "bob_manager"
+  },
+  {
+    "id": "tq/latest_wins/q9",
+    "question": "How many offices does the company currently operate?",
+    "answer": [
+      "5"
+    ],
+    "paragraphs": [
+      {
+        "title": "Annual Report 2019",
+        "text": "Since 2019, the company operates 5 offices.",
+        "idx": 22,
+        "is_supporting": true
+      },
+      {
+        "title": "Annual Report 2015",
+        "text": "In 2015, the company operated 3 offices.",
+        "idx": 3,
+        "is_supporting": false
+      }
+    ],
+    "category": "latest_wins",
+    "question_time": 2024,
+    "gold_timestamp": 2019,
+    "gold_claim_id": "office_count"
+  },
+  {
+    "id": "tq/latest_wins/q10",
+    "question": "Who is the company's current CEO?",
+    "answer": [
+      "Ian"
+    ],
+    "paragraphs": [
+      {
+        "title": "Leadership 2020",
+        "text": "Since 2020, the company's CEO is Ian.",
+        "idx": 10,
+        "is_supporting": true
+      },
+      {
+        "title": "Leadership 2012",
+        "text": "In 2012, the company's CEO was Helen.",
+        "idx": 20,
+        "is_supporting": false
+      }
+    ],
+    "category": "latest_wins",
+    "question_time": 2024,
+    "gold_timestamp": 2020,
+    "gold_claim_id": "ceo"
+  },
+  {
+    "id": "tq/time_specific/q1",
+    "question": "What was Alice's role in 2019?",
+    "answer": [
+      "Engineer"
+    ],
+    "paragraphs": [
+      {
+        "title": "HR Record 2018 - Alice",
+        "text": "In 2018, Alice worked as an Engineer at the company.",
+        "idx": 17,
+        "is_supporting": true
+      },
+      {
+        "title": "HR Record 2021 - Alice",
+        "text": "As of 2021, Alice works as a Manager at the company.",
+        "idx": 31,
+        "is_supporting": false
+      }
+    ],
+    "category": "time_specific",
+    "question_time": 2019,
+    "gold_timestamp": 2018,
+    "gold_claim_id": "alice_role"
+  },
+  {
+    "id": "tq/time_specific/q2",
+    "question": "Which team was Bob on in 2018?",
+    "answer": [
+      "Team Alpha"
+    ],
+    "paragraphs": [
+      {
+        "title": "Org Chart 2017 - Bob",
+        "text": "In 2017, Bob was a member of Team Alpha.",
+        "idx": 21,
+        "is_supporting": true
+      },
+      {
+        "title": "Org Chart 2020 - Bob",
+        "text": "Since 2020, Bob is a member of Team Beta.",
+        "idx": 24,
+        "is_supporting": false
+      }
+    ],
+    "category": "time_specific",
+    "question_time": 2018,
+    "gold_timestamp": 2017,
+    "gold_claim_id": "bob_team"
+  },
+  {
+    "id": "tq/time_specific/q3",
+    "question": "In which city was the headquarters located in 2017?",
+    "answer": [
+      "Boston"
+    ],
+    "paragraphs": [
+      {
+        "title": "Facilities Report 2015",
+        "text": "In 2015, the company headquarters was located in Boston.",
+        "idx": 26,
+        "is_supporting": true
+      },
+      {
+        "title": "Facilities Report 2020",
+        "text": "Since 2020, the company headquarters is located in Denver.",
+        "idx": 1,
+        "is_supporting": false
+      }
+    ],
+    "category": "time_specific",
+    "question_time": 2017,
+    "gold_timestamp": 2015,
+    "gold_claim_id": "hq_city"
+  },
+  {
+    "id": "tq/time_specific/q4",
+    "question": "Who owned Project X in 2020?",
+    "answer": [
+      "Alice"
+    ],
+    "paragraphs": [
+      {
+        "title": "Project X Charter 2019",
+        "text": "In 2019, Project X was owned by Alice.",
+        "idx": 15,
+        "is_supporting": true
+      },
+      {
+        "title": "Project X Charter 2021",
+        "text": "As of 2021, Project X is owned by Eve.",
+        "idx": 32,
+        "is_supporting": false
+      }
+    ],
+    "category": "time_specific",
+    "question_time": 2020,
+    "gold_timestamp": 2019,
+    "gold_claim_id": "projectx_owner"
+  },
+  {
+    "id": "tq/time_specific/q5",
+    "question": "How many vacation days did employees receive in 2018?",
+    "answer": [
+      "15"
+    ],
+    "paragraphs": [
+      {
+        "title": "Leave Policy 2016",
+        "text": "In 2016, employees received 15 vacation days per year.",
+        "idx": 29,
+        "is_supporting": true
+      },
+      {
+        "title": "Leave Policy 2021",
+        "text": "Since 2021, employees receive 20 vacation days per year.",
+        "idx": 12,
+        "is_supporting": false
+      }
+    ],
+    "category": "time_specific",
+    "question_time": 2018,
+    "gold_timestamp": 2016,
+    "gold_claim_id": "vacation_days"
+  },
+  {
+    "id": "tq/time_specific/q6",
+    "question": "What was Grace's title in 2018?",
+    "answer": [
+      "Analyst"
+    ],
+    "paragraphs": [
+      {
+        "title": "HR Record 2017 - Grace",
+        "text": "In 2017, Grace held the title of Analyst.",
+        "idx": 8,
+        "is_supporting": true
+      },
+      {
+        "title": "HR Record 2020 - Grace",
+        "text": "Since 2020, Grace holds the title of Lead Analyst.",
+        "idx": 2,
+        "is_supporting": false
+      }
+    ],
+    "category": "time_specific",
+    "question_time": 2018,
+    "gold_timestamp": 2017,
+    "gold_claim_id": "grace_title"
+  },
+  {
+    "id": "tq/time_specific/q7",
+    "question": "Who was the company's CEO in 2015?",
+    "answer": [
+      "Helen"
+    ],
+    "paragraphs": [
+      {
+        "title": "Leadership 2012",
+        "text": "In 2012, the company's CEO was Helen.",
+        "idx": 20,
+        "is_supporting": true
+      },
+      {
+        "title": "Leadership 2020",
+        "text": "Since 2020, the company's CEO is Ian.",
+        "idx": 10,
+        "is_supporting": false
+      }
+    ],
+    "category": "time_specific",
+    "question_time": 2015,
+    "gold_timestamp": 2012,
+    "gold_claim_id": "ceo"
+  },
+  {
+    "id": "tq/time_specific/q8",
+    "question": "How many offices did the company have in 2016?",
+    "answer": [
+      "3"
+    ],
+    "paragraphs": [
+      {
+        "title": "Annual Report 2015",
+        "text": "In 2015, the company operated 3 offices.",
+        "idx": 3,
+        "is_supporting": true
+      },
+      {
+        "title": "Annual Report 2019",
+        "text": "Since 2019, the company operates 5 offices.",
+        "idx": 22,
+        "is_supporting": false
+      }
+    ],
+    "category": "time_specific",
+    "question_time": 2016,
+    "gold_timestamp": 2015,
+    "gold_claim_id": "office_count"
+  },
+  {
+    "id": "tq/multihop_updated/q1",
+    "question": "What is the role of the current owner of Project X?",
+    "answer": [
+      "Director"
+    ],
+    "paragraphs": [
+      {
+        "title": "Project X Charter 2021",
+        "text": "As of 2021, Project X is owned by Eve.",
+        "idx": 32,
+        "is_supporting": true
+      },
+      {
+        "title": "HR Record - Eve",
+        "text": "Eve is a Director at the company.",
+        "idx": 11,
+        "is_supporting": true
+      }
+    ],
+    "category": "multihop_updated",
+    "question_time": 2024,
+    "gold_timestamp": 2021,
+    "gold_claim_id": "projectx_owner"
+  },
+  {
+    "id": "tq/multihop_updated/q2",
+    "question": "Who leads the team that Bob is currently on?",
+    "answer": [
+      "Frank"
+    ],
+    "paragraphs": [
+      {
+        "title": "Org Chart 2020 - Bob",
+        "text": "Since 2020, Bob is a member of Team Beta.",
+        "idx": 24,
+        "is_supporting": true
+      },
+      {
+        "title": "Team Beta Overview",
+        "text": "Team Beta is led by Frank.",
+        "idx": 30,
+        "is_supporting": true
+      }
+    ],
+    "category": "multihop_updated",
+    "question_time": 2024,
+    "gold_timestamp": 2020,
+    "gold_claim_id": "bob_team"
+  },
+  {
+    "id": "tq/multihop_updated/q3",
+    "question": "In which country is the company's current headquarters located?",
+    "answer": [
+      "USA"
+    ],
+    "paragraphs": [
+      {
+        "title": "Facilities Report 2020",
+        "text": "Since 2020, the company headquarters is located in Denver.",
+        "idx": 1,
+        "is_supporting": true
+      },
+      {
+        "title": "Geography Reference",
+        "text": "Denver is a city located in the USA.",
+        "idx": 14,
+        "is_supporting": true
+      }
+    ],
+    "category": "multihop_updated",
+    "question_time": 2024,
+    "gold_timestamp": 2020,
+    "gold_claim_id": "hq_city"
+  },
+  {
+    "id": "tq/multihop_updated/q4",
+    "question": "Where did the company's current CEO previously work?",
+    "answer": [
+      "TechCorp"
+    ],
+    "paragraphs": [
+      {
+        "title": "Leadership 2020",
+        "text": "Since 2020, the company's CEO is Ian.",
+        "idx": 10,
+        "is_supporting": true
+      },
+      {
+        "title": "Executive Bio - Ian",
+        "text": "Before joining the company, Ian previously worked at TechCorp.",
+        "idx": 16,
+        "is_supporting": true
+      }
+    ],
+    "category": "multihop_updated",
+    "question_time": 2024,
+    "gold_timestamp": 2020,
+    "gold_claim_id": "ceo"
+  },
+  {
+    "id": "tq/multihop_updated/q5",
+    "question": "What category does the company's current flagship product belong to?",
+    "answer": [
+      "cloud platform"
+    ],
+    "paragraphs": [
+      {
+        "title": "Product Catalog 2021",
+        "text": "Since 2021, the company's flagship product is ProductB.",
+        "idx": 19,
+        "is_supporting": true
+      },
+      {
+        "title": "ProductB Spec",
+        "text": "ProductB is a cloud platform.",
+        "idx": 4,
+        "is_supporting": true
+      }
+    ],
+    "category": "multihop_updated",
+    "question_time": 2024,
+    "gold_timestamp": 2021,
+    "gold_claim_id": "flagship"
+  },
+  {
+    "id": "tq/multihop_updated/q6",
+    "question": "At which office does Bob's current manager work?",
+    "answer": [
+      "Denver"
+    ],
+    "paragraphs": [
+      {
+        "title": "Reporting Lines 2020",
+        "text": "Since 2020, Bob's manager is David.",
+        "idx": 7,
+        "is_supporting": true
+      },
+      {
+        "title": "Staff Directory - David",
+        "text": "David works at the Denver office.",
+        "idx": 0,
+        "is_supporting": true
+      }
+    ],
+    "category": "multihop_updated",
+    "question_time": 2024,
+    "gold_timestamp": 2020,
+    "gold_claim_id": "bob_manager"
+  },
+  {
+    "id": "tq/conflict/q1",
+    "question": "How many vacation days do employees receive?",
+    "answer": [
+      "20"
+    ],
+    "paragraphs": [
+      {
+        "title": "Leave Policy 2021",
+        "text": "Since 2021, employees receive 20 vacation days per year.",
+        "idx": 12,
+        "is_supporting": true
+      },
+      {
+        "title": "Leave Policy 2016",
+        "text": "In 2016, employees received 15 vacation days per year.",
+        "idx": 29,
+        "is_supporting": false
+      }
+    ],
+    "category": "conflict",
+    "question_time": 2024,
+    "gold_timestamp": 2021,
+    "gold_claim_id": "vacation_days"
+  },
+  {
+    "id": "tq/conflict/q2",
+    "question": "What is Alice's job title?",
+    "answer": [
+      "Manager"
+    ],
+    "paragraphs": [
+      {
+        "title": "HR Record 2021 - Alice",
+        "text": "As of 2021, Alice works as a Manager at the company.",
+        "idx": 31,
+        "is_supporting": true
+      },
+      {
+        "title": "HR Record 2018 - Alice",
+        "text": "In 2018, Alice worked as an Engineer at the company.",
+        "idx": 17,
+        "is_supporting": false
+      }
+    ],
+    "category": "conflict",
+    "question_time": 2024,
+    "gold_timestamp": 2021,
+    "gold_claim_id": "alice_role"
+  },
+  {
+    "id": "tq/conflict/q3",
+    "question": "Who is the company's CEO?",
+    "answer": [
+      "Ian"
+    ],
+    "paragraphs": [
+      {
+        "title": "Leadership 2020",
+        "text": "Since 2020, the company's CEO is Ian.",
+        "idx": 10,
+        "is_supporting": true
+      },
+      {
+        "title": "Leadership 2012",
+        "text": "In 2012, the company's CEO was Helen.",
+        "idx": 20,
+        "is_supporting": false
+      }
+    ],
+    "category": "conflict",
+    "question_time": 2024,
+    "gold_timestamp": 2020,
+    "gold_claim_id": "ceo"
+  },
+  {
+    "id": "tq/conflict/q4",
+    "question": "What is the company's flagship product?",
+    "answer": [
+      "ProductB"
+    ],
+    "paragraphs": [
+      {
+        "title": "Product Catalog 2021",
+        "text": "Since 2021, the company's flagship product is ProductB.",
+        "idx": 19,
+        "is_supporting": true
+      },
+      {
+        "title": "Product Catalog 2016",
+        "text": "In 2016, the company's flagship product was ProductA.",
+        "idx": 5,
+        "is_supporting": false
+      }
+    ],
+    "category": "conflict",
+    "question_time": 2024,
+    "gold_timestamp": 2021,
+    "gold_claim_id": "flagship"
+  },
+  {
+    "id": "tq/conflict/q5",
+    "question": "Where is the company headquartered?",
+    "answer": [
+      "Denver"
+    ],
+    "paragraphs": [
+      {
+        "title": "Facilities Report 2020",
+        "text": "Since 2020, the company headquarters is located in Denver.",
+        "idx": 1,
+        "is_supporting": true
+      },
+      {
+        "title": "Facilities Report 2015",
+        "text": "In 2015, the company headquarters was located in Boston.",
+        "idx": 26,
+        "is_supporting": false
+      }
+    ],
+    "category": "conflict",
+    "question_time": 2024,
+    "gold_timestamp": 2020,
+    "gold_claim_id": "hq_city"
+  },
+  {
+    "id": "tq/conflict/q6",
+    "question": "How many offices does the company have?",
+    "answer": [
+      "5"
+    ],
+    "paragraphs": [
+      {
+        "title": "Annual Report 2019",
+        "text": "Since 2019, the company operates 5 offices.",
+        "idx": 22,
+        "is_supporting": true
+      },
+      {
+        "title": "Annual Report 2015",
+        "text": "In 2015, the company operated 3 offices.",
+        "idx": 3,
+        "is_supporting": false
+      }
+    ],
+    "category": "conflict",
+    "question_time": 2024,
+    "gold_timestamp": 2019,
+    "gold_claim_id": "office_count"
+  },
+  {
+    "id": "tq/control/q1",
+    "question": "Who is the company's CTO?",
+    "answer": [
+      "Carol"
+    ],
+    "paragraphs": [
+      {
+        "title": "HR Record - Carol",
+        "text": "Carol is the Chief Technology Officer (CTO) of the company.",
+        "idx": 6,
+        "is_supporting": true
+      }
+    ],
+    "category": "control",
+    "question_time": 2024,
+    "gold_timestamp": 2010,
+    "gold_claim_id": "carol_role"
+  },
+  {
+    "id": "tq/control/q2",
+    "question": "In which year was the company founded?",
+    "answer": [
+      "2008"
+    ],
+    "paragraphs": [
+      {
+        "title": "Company History",
+        "text": "The company was founded in 2008.",
+        "idx": 23,
+        "is_supporting": true
+      }
+    ],
+    "category": "control",
+    "question_time": 2024,
+    "gold_timestamp": 2008,
+    "gold_claim_id": "company_founded"
+  },
+  {
+    "id": "tq/control/q3",
+    "question": "What is Eve's role?",
+    "answer": [
+      "Director"
+    ],
+    "paragraphs": [
+      {
+        "title": "HR Record - Eve",
+        "text": "Eve is a Director at the company.",
+        "idx": 11,
+        "is_supporting": true
+      }
+    ],
+    "category": "control",
+    "question_time": 2024,
+    "gold_timestamp": 2021,
+    "gold_claim_id": "eve_role"
+  },
+  {
+    "id": "tq/control/q4",
+    "question": "Who leads Team Beta?",
+    "answer": [
+      "Frank"
+    ],
+    "paragraphs": [
+      {
+        "title": "Team Beta Overview",
+        "text": "Team Beta is led by Frank.",
+        "idx": 30,
+        "is_supporting": true
+      }
+    ],
+    "category": "control",
+    "question_time": 2024,
+    "gold_timestamp": 2020,
+    "gold_claim_id": "beta_lead"
+  },
+  {
+    "id": "tq/control/q5",
+    "question": "In which country is Denver located?",
+    "answer": [
+      "USA"
+    ],
+    "paragraphs": [
+      {
+        "title": "Geography Reference",
+        "text": "Denver is a city located in the USA.",
+        "idx": 14,
+        "is_supporting": true
+      }
+    ],
+    "category": "control",
+    "question_time": 2024,
+    "gold_timestamp": 2015,
+    "gold_claim_id": "denver_country"
+  },
+  {
+    "id": "tq/control/q6",
+    "question": "What category is ProductB?",
+    "answer": [
+      "cloud platform"
+    ],
+    "paragraphs": [
+      {
+        "title": "ProductB Spec",
+        "text": "ProductB is a cloud platform.",
+        "idx": 4,
+        "is_supporting": true
+      }
+    ],
+    "category": "control",
+    "question_time": 2024,
+    "gold_timestamp": 2021,
+    "gold_claim_id": "productb_category"
+  }
+]
