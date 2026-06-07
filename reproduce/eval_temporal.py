@@ -64,67 +64,86 @@ def hit(targets, pred):
     return any(normalize_answer(t) and normalize_answer(t) in npred for t in targets)
 
 
+AGG_KEYS = ["n", "em", "f1", "gold_hit",
+            "ver_n", "gold_only", "stale_only", "both", "neither"]
+
+
 def evaluate(questions, predictions):
     pred_by_q = {p["question"]: p.get("answer") or "" for p in predictions}
     missing = [q["question"] for q in questions if q["question"] not in pred_by_q]
     if missing:
         print(f"  WARNING: {len(missing)} questions had no matching prediction (skipped).")
 
-    # per-category accumulators
-    agg = {c: {"n": 0, "em": 0.0, "f1": 0.0, "gold_hit": 0,
-               "stale_n": 0, "stale_hit": 0} for c in CATEGORY_ORDER}
+    agg = {c: {k: 0 if k != "em" and k != "f1" else 0.0 for k in AGG_KEYS} for c in CATEGORY_ORDER}
 
     for q in questions:
         pred = pred_by_q.get(q["question"])
         if pred is None:
             continue
-        c = q["category"]
-        a = agg[c]
+        a = agg[q["category"]]
         a["n"] += 1
         a["em"] += exact_match(q["answer"], pred)
         a["f1"] += f1_score(q["answer"], pred)
-        a["gold_hit"] += 1 if hit(q["answer"], pred) else 0
-        stale = q.get("stale_answers") or []
-        if c in STALE_CATEGORIES and stale:
-            a["stale_n"] += 1
-            # stale only counts if it picked a stale value AND not the gold one
-            if hit(stale, pred) and not hit(q["answer"], pred):
-                a["stale_hit"] += 1
+        contains_gold = hit(q["answer"], pred)
+        a["gold_hit"] += 1 if contains_gold else 0
 
+        # version-pick: for questions with a known other-version value, classify
+        # which version the answer actually committed to. This is the metric
+        # that EM/F1/gold-hit can't show (gold-hit double-counts "mentions both").
+        stale = q.get("stale_answers") or []
+        if stale:
+            contains_stale = hit(stale, pred)
+            a["ver_n"] += 1
+            if contains_gold and not contains_stale:
+                a["gold_only"] += 1     # committed to the temporally-correct version
+            elif contains_stale and not contains_gold:
+                a["stale_only"] += 1    # committed to the wrong version
+            elif contains_gold and contains_stale:
+                a["both"] += 1          # hedged / mentioned both versions
+            else:
+                a["neither"] += 1
     return agg
 
 
 def summarize(agg):
-    rows = []
-    tot = {"n": 0, "em": 0.0, "f1": 0.0, "gold_hit": 0, "stale_n": 0, "stale_hit": 0}
-    for c in CATEGORY_ORDER:
-        a = agg[c]
-        if a["n"] == 0:
-            continue
-        for k in tot:
-            tot[k] += a[k]
-        rows.append((c, a))
+    rows = [(c, agg[c]) for c in CATEGORY_ORDER if agg[c]["n"] > 0]
+    tot = {k: sum(agg[c][k] for c, _ in rows) for k in AGG_KEYS}
     return rows, tot
 
 
-def fmt_row(name, a):
+def _safe(x, n):
+    return x / n if n else 0.0
+
+
+def qa_row(name, a):
     n = a["n"]
-    em = a["em"] / n if n else 0.0
-    f1 = a["f1"] / n if n else 0.0
-    gh = a["gold_hit"] / n if n else 0.0
-    stale = (a["stale_hit"] / a["stale_n"]) if a["stale_n"] else None
-    stale_str = f"{stale:6.3f}" if stale is not None else "   n/a"
-    return f"  {name:<18} {n:>3}  {em:6.3f}  {f1:6.3f}  {gh:6.3f}  {stale_str}"
+    return f"  {name:<18} {n:>3}  {_safe(a['em'],n):6.3f}  {_safe(a['f1'],n):6.3f}  {_safe(a['gold_hit'],n):6.3f}"
+
+
+def ver_row(name, a):
+    m = a["ver_n"]
+    return (f"  {name:<18} {m:>3}  {_safe(a['gold_only'],m):7.3f} {_safe(a['stale_only'],m):7.3f} "
+            f"{_safe(a['both'],m):6.3f} {_safe(a['neither'],m):6.3f}")
 
 
 def report(label, agg):
-    print(f"\n=== {label} ===")
-    print(f"  {'category':<18} {'n':>3}  {'EM':>6}  {'F1':>6}  {'gold↑':>6}  {'stale↓':>6}")
     rows, tot = summarize(agg)
+    print(f"\n=== {label} ===")
+    print(f"  {'category':<18} {'n':>3}  {'EM':>6}  {'F1':>6}  {'gold↑':>6}")
     for c, a in rows:
-        print(fmt_row(c, a))
-    print("  " + "-" * 52)
-    print(fmt_row("OVERALL", tot))
+        print(qa_row(c, a))
+    print("  " + "-" * 44)
+    print(qa_row("OVERALL", tot))
+
+    ver_rows = [(c, a) for c, a in rows if a["ver_n"] > 0]
+    if ver_rows:
+        print(f"\n  version-pick (versioned questions only)")
+        print(f"  {'category':<18} {'n':>3}  {'v-acc↑':>7} {'stale↓':>7} {'both':>6} {'none':>6}")
+        for c, a in ver_rows:
+            print(ver_row(c, a))
+        vtot = {k: sum(a[k] for _, a in ver_rows) for k in AGG_KEYS}
+        print("  " + "-" * 48)
+        print(ver_row("OVERALL", vtot))
 
 
 def main():
@@ -146,8 +165,9 @@ def main():
         raise SystemExit("No prediction files found. Run main.py on temporal_mvp first, or pass --predictions.")
 
     print(f"Questions: {len(questions)} | Prediction files: {len(pred_files)}")
-    print("Legend: gold↑ = normalized gold-hit rate (higher better); "
-          "stale↓ = answered with a wrong-version value (lower better).")
+    print("Legend: gold↑=gold value appears in answer (lenient). version-pick (versioned Qs):")
+    print("  v-acc↑=committed to correct version only | stale↓=committed to wrong version only")
+    print("  both=mentioned both versions (hedged) | none=mentioned neither")
     for pf in pred_files:
         label = os.path.basename(pf)
         agg = evaluate(questions, json.load(open(pf)))
