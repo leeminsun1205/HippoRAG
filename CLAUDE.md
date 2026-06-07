@@ -347,6 +347,8 @@ through:
 rerank.py::DSPyFilter
 ```
 
+`parse_filter` accepts both the wrapped `{"fact": [...]}` form and a bare list of triples, since smaller / quantized LLMs (e.g. `Qwen2.5-7B-Instruct-AWQ`) often emit the latter. When a query's reranking yields no facts, `retrieve()` falls back to plain dense passage retrieval and logs a per-run summary: `DPR fallback (no facts after reranking): N/M queries`. **Watch this number** — a high ratio means the run is effectively closer to DPR than full HippoRAG, usually because the LLM isn't producing parseable facts.
+
 When changing prompts, explain whether the change affects only answer generation, fact reranking, retrieval, or evaluation.
 
 ---

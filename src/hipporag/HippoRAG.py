@@ -435,6 +435,7 @@ class HippoRAG:
         self.get_query_embeddings(queries)
 
         retrieval_results = []
+        num_dpr_fallback = 0  # queries with no facts after reranking -> DPR fallback
 
         for q_idx, query in tqdm(enumerate(queries), desc="Retrieving", total=len(queries)):
             rerank_start = time.time()
@@ -445,6 +446,7 @@ class HippoRAG:
             self.rerank_time += rerank_end - rerank_start
 
             if len(top_k_facts) == 0:
+                num_dpr_fallback += 1
                 logger.info('No facts found after reranking, return DPR results')
                 sorted_doc_ids, sorted_doc_scores = self.dense_passage_retrieval(query)
             else:
@@ -467,6 +469,15 @@ class HippoRAG:
         logger.info(f"Total Recognition Memory Time {self.rerank_time:.2f}s")
         logger.info(f"Total PPR Time {self.ppr_time:.2f}s")
         logger.info(f"Total Misc Time {self.all_retrieval_time - (self.rerank_time + self.ppr_time):.2f}s")
+
+        # How many queries bypassed the graph (no facts survived reranking).
+        # A high ratio means the run is effectively closer to plain DPR than to
+        # full HippoRAG — usually a sign the LLM isn't producing parseable facts.
+        if len(queries) > 0:
+            logger.info(
+                f"DPR fallback (no facts after reranking): {num_dpr_fallback}/{len(queries)} queries "
+                f"({100.0 * num_dpr_fallback / len(queries):.1f}%)"
+            )
 
         # Evaluate retrieval
         if gold_docs is not None:

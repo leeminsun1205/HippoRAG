@@ -76,6 +76,13 @@ class DSPyFilter:
                             parsed_value = ast.literal_eval(value)
                         except (ValueError, SyntaxError):
                             parsed_value = value
+                    # Smaller / quantized LLMs often emit a bare list of triples
+                    # (e.g. `[]` or `[["s","p","o"]]`) instead of the wrapped
+                    # `{"fact": [...]}` the Fact model expects. Accept both so
+                    # valid facts aren't silently dropped (which would force a
+                    # DPR fallback and lose HippoRAG's graph reranking).
+                    if isinstance(parsed_value, list):
+                        parsed_value = {"fact": parsed_value}
                     parsed = TypeAdapter(Fact).validate_python(parsed_value).fact
                 except Exception as e:
                     print(
