@@ -163,6 +163,33 @@ class HippoRAG:
 
         self.ent_node_to_chunk_ids = None
 
+        # Per-document temporal/provenance metadata, populated in `index()`.
+        # Initialized here so retrieval-only sessions (which load a prebuilt
+        # graph and call `prepare_retrieval_objects` -> `add_fact_edges`
+        # without `index()`) don't hit an AttributeError.
+        self.text_to_meta = {}
+        self.node_to_node_temporal = {}
+
+
+    def _update_edge_meta(self, edge: Tuple[str, str], t_time, t_prov):
+        """Records the most recent (timestamp, provenance) for an edge.
+
+        The same entity-entity edge can be produced by multiple chunks with
+        different timestamps. We keep the latest one so downstream recency
+        weighting reflects the newest evidence, instead of letting whichever
+        chunk happens to be processed last win. Falls back to overwrite if the
+        timestamps are not directly comparable (e.g. mixed types).
+        """
+        existing = self.node_to_node_temporal.get(edge)
+        if existing is None:
+            self.node_to_node_temporal[edge] = (t_time, t_prov)
+            return
+        try:
+            if t_time > existing[0]:
+                self.node_to_node_temporal[edge] = (t_time, t_prov)
+        except TypeError:
+            self.node_to_node_temporal[edge] = (t_time, t_prov)
+
 
     def initialize_graph(self):
         """
@@ -776,8 +803,8 @@ class HippoRAG:
                     self.node_to_node_stats[(node_2_key, node_key)] = self.node_to_node_stats.get(
                         (node_2_key, node_key), 0.0) + 1
 
-                    self.node_to_node_temporal[(node_key, node_2_key)] = (t_time, t_prov)
-                    self.node_to_node_temporal[(node_2_key, node_key)] = (t_time, t_prov)
+                    self._update_edge_meta((node_key, node_2_key), t_time, t_prov)
+                    self._update_edge_meta((node_2_key, node_key), t_time, t_prov)
 
                     entities_in_chunk.add(node_key)
                     entities_in_chunk.add(node_2_key)

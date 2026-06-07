@@ -3,11 +3,9 @@ import json
 
 import torch
 import numpy as np
-from tqdm import tqdm
 
 from .base import BaseEmbeddingModel
 from ..utils.config_utils import BaseConfig
-from ..prompts.linking import get_query_instruction
 from sentence_transformers import SentenceTransformer
 
 class TransformersEmbeddingModel(BaseEmbeddingModel):
@@ -24,24 +22,36 @@ class TransformersEmbeddingModel(BaseEmbeddingModel):
 
         self.model = SentenceTransformer(self.model_id, device = "cuda" if torch.cuda.is_available() else "cpu")
 
-        self.search_query_instr = set([
-            get_query_instruction('query_to_fact'),
-            get_query_instruction('query_to_passage')
-        ])
-
-    def encode(self, texts: List[str]) -> None:
+    def encode(self, texts: List[str], norm: bool = True) -> np.ndarray:
         try:
-            response = self.model.encode(texts, batch_size=self.batch_size)
+            # SentenceTransformer batches internally via `batch_size`.
+            # `normalize_embeddings` is False by default, which is wrong for
+            # cosine-style retrieval (HippoRAG scores with dot product), so we
+            # pass it explicitly.
+            response = self.model.encode(
+                texts,
+                batch_size=self.batch_size,
+                normalize_embeddings=norm,
+                show_progress_bar=False,
+            )
         except Exception as err:
             raise Exception(f"An error occurred: {err}")
         return np.array(response)
 
-    def batch_encode(self, texts: List[str], **kwargs) -> None:
-        if len(texts) < self.batch_size:
-            return self.encode(texts)
-        
-        results = []
-        batch_indexes = list(range(0, len(texts), self.batch_size))
-        for i in tqdm(batch_indexes, desc="Batch Encoding"):
-            results.append(self.encode(texts[i:i + self.batch_size]))
-        return np.concatenate(results)
+    def batch_encode(self, texts: List[str], **kwargs) -> np.ndarray:
+        if isinstance(texts, str):
+            texts = [texts]
+
+        # Instruction is applied to the *query* side only (HippoRAG passes it
+        # when encoding queries; passage/entity/fact insertion passes none),
+        # preserving the asymmetric query-vs-passage encoding these models
+        # expect. Mirrors NVEmbedV2's handling.
+        instruction = kwargs.get("instruction", "")
+        if instruction:
+            texts = [f"{instruction}\n{text}" for text in texts]
+
+        # Respect requested normalization, defaulting to the global config.
+        # Required so dot-product scoring behaves as cosine similarity.
+        norm = kwargs.get("norm", self.global_config.embedding_return_as_normalized)
+
+        return self.encode(texts, norm=norm)
