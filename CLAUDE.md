@@ -28,6 +28,7 @@ This distinguishes what **already exists in the code** from what is still a **re
 - For an entity–entity (fact) edge produced by multiple chunks, the **latest** timestamp wins (`_update_edge_meta`), not whichever chunk was processed last. Comparison falls back to overwrite for non-comparable timestamp types.
 - `self.text_to_meta` / `self.node_to_node_temporal` are initialized in `__init__`, so retrieval-only sessions (load prebuilt graph, no `index()` call) don't crash in `add_fact_edges`.
 - The metadata is **stored** on the igraph object and persisted in the graph pickle.
+- **Recency-weighted PPR (Goal 5), config-gated.** `_get_ppr_edge_weights()` scales PPR edge weights by edge `timestamp` when `temporal_weighting=True` (default **False** = original static behavior). Recency interpolates linearly: newest edge ×1.0, oldest ×`temporal_weight_floor` (default 0.5); edges with no real timestamp (≤0: synonymy/passage/legacy graphs) stay ×1.0. Toggle via `main.py --temporal_weighting true`. `provenance`/reliability are not yet used in scoring (Goal 5 partial).
 
   Known limitations of the current metadata (not bugs, but watch out): synonymy edges carry the default `(0, 'Unknown')`; temporal lives only on edges (not on fact/entity/passage nodes); `text_to_meta` is keyed by exact doc text, so enabling chunking would break the lookup.
 
@@ -35,10 +36,10 @@ This distinguishes what **already exists in the code** from what is still a **re
 
 - **Conflict detection** (rule-based or NLI / DeBERTa-MNLI). The `conflict` concept described below is a design plan, not code.
 - **`superseded` marking.** No triple/edge is currently marked superseded; nothing sets or reads such a status. `delete()` hard-deletes nodes — there is no soft-supersede path yet.
-- **Recency-weighted retrieval.** `run_ppr` currently uses only the scalar edge `weight` (`weights='weight'`); `timestamp` / `provenance` are **not** consumed during retrieval or PPR scoring.
+- **Provenance-/reliability-weighted scoring.** Only recency (timestamp) feeds PPR so far; `provenance` is still carried-but-unused (rest of Goal 5).
 - **Temporal QA benchmark / augmented dataset.**
 
-In short: temporal metadata is currently **carried but not yet acted upon**. Any task touching conflict/supersede/recency means building new logic, not editing existing logic.
+In short: recency now optionally affects retrieval (Goal 5, behind `temporal_weighting`); conflict/supersede and provenance-weighting are still unbuilt. Tasks touching those mean building new logic, not editing existing logic.
 
 **Maintenance rule:** When a code change implements, removes, or materially changes any feature listed above, update this section **in the same task** — move completed TODOs from "Not implemented yet" to "Implemented", and record any new limitations or follow-up TODOs. Keep this section in sync with the code; a stale status here is worse than none.
 
@@ -298,7 +299,11 @@ Dispatch is based on substrings of `embedding_model_name`, including:
 - `Transformers/`
 - `VLLM/`
 
-The `Transformers/` backend (`Transformers.py`, used here for `Transformers/BAAI/bge-base-en-v1.5`) wraps `SentenceTransformer`. It **L2-normalizes embeddings** (`normalize_embeddings=norm`, default from `embedding_return_as_normalized`) and prepends the query `instruction` to query texts only — both are required because retrieval scores with dot product as a cosine proxy. (Earlier this class silently dropped `norm`/`instruction`, degrading retrieval; fixed.) For maximum quality you could swap the generic HippoRAG instruction for bge's native query prefix, but normalization is the part that matters.
+The `Transformers/` backend (`Transformers.py`, used here for `Transformers/BAAI/bge-base-en-v1.5`) wraps `SentenceTransformer`. It **L2-normalizes embeddings** (`normalize_embeddings=norm`, default from `embedding_return_as_normalized`) and prepends the query `instruction` to query texts only — both are required because retrieval scores with dot product as a cosine proxy. For maximum quality you could swap the generic HippoRAG instruction for bge's native query prefix, but normalization is the part that matters.
+
+The `VLLM/` backend (`VLLM.py`, an HTTP client to a vLLM `/v1/embeddings` server) does the **same** L2-normalization client-side and the same query-only instruction handling.
+
+(Both backends previously dropped `norm`/`instruction` silently — and `VLLM.py` additionally referenced an undefined `self.base_url` so it never ran at all. Both fixed.)
 
 ### OpenIE backend
 

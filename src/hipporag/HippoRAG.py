@@ -1625,7 +1625,51 @@ class HippoRAG:
         except Exception as e:
             logger.error(f"Error in rerank_facts: {str(e)}")
             return [], [], {'facts_before_rerank': [], 'facts_after_rerank': [], 'error': str(e)}
-    
+
+    def _get_ppr_edge_weights(self):
+        """Returns the edge weights to use for PPR.
+
+        When `temporal_weighting` is off (default), returns the string
+        `'weight'` so igraph uses the stored edge weight attribute directly —
+        identical to the original static behavior.
+
+        When on, returns a list of per-edge weights `base_weight * recency`,
+        where recency interpolates linearly from 1.0 for the newest edge down
+        to `temporal_weight_floor` for the oldest, based on the edge
+        `timestamp`. Edges without a real timestamp (<= 0, e.g. synonymy and
+        passage edges, or graphs built before temporal metadata existed) are
+        left unscaled (factor 1.0) so structural connectivity isn't penalized.
+        """
+        if not self.global_config.temporal_weighting:
+            return 'weight'
+
+        edge_attrs = self.graph.es.attributes()
+        if 'weight' not in edge_attrs or 'timestamp' not in edge_attrs:
+            logger.warning("temporal_weighting is on but the graph has no 'weight'/'timestamp' edge attributes; falling back to static weights.")
+            return 'weight'
+
+        base_weights = self.graph.es['weight']
+        timestamps = self.graph.es['timestamp']
+
+        real_times = [t for t in timestamps if isinstance(t, (int, float)) and t > 0]
+        if not real_times:
+            logger.warning("temporal_weighting is on but no edge has a real (>0) timestamp; falling back to static weights.")
+            return 'weight'
+
+        t_max, t_min = max(real_times), min(real_times)
+        span = (t_max - t_min) if t_max > t_min else 1.0
+        floor = self.global_config.temporal_weight_floor
+
+        weights = []
+        for w, t in zip(base_weights, timestamps):
+            if isinstance(t, (int, float)) and t > 0:
+                age_norm = (t_max - t) / span        # 0 for newest, 1 for oldest
+                factor = 1.0 - (1.0 - floor) * age_norm
+            else:
+                factor = 1.0                          # no temporal info -> neutral
+            weights.append(w * factor)
+        return weights
+
     def run_ppr(self,
                 reset_prob: np.ndarray,
                 damping: float =0.5) -> Tuple[np.ndarray, np.ndarray]:
@@ -1653,11 +1697,17 @@ class HippoRAG:
 
         if damping is None: damping = 0.5 # for potential compatibility
         reset_prob = np.where(np.isnan(reset_prob) | (reset_prob < 0), 0, reset_prob)
+
+        # Recency weighting (Goal 5): optionally scale edge weights so newer
+        # edges propagate more PPR mass. Off by default -> identical to static
+        # behavior (uses the 'weight' attribute directly).
+        weights = self._get_ppr_edge_weights()
+
         pagerank_scores = self.graph.personalized_pagerank(
             vertices=range(len(self.node_name_to_vertex_idx)),
             damping=damping,
             directed=False,
-            weights='weight',
+            weights=weights,
             reset=reset_prob,
             implementation='prpack'
         )

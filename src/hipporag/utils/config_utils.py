@@ -181,6 +181,14 @@ class BaseConfig:
         default=0.5,
         metadata={"help": "Damping factor for ppr algorithm."}
     )
+    temporal_weighting: bool = field(
+        default=False,
+        metadata={"help": "If True, scale PPR edge weights by recency using the edge `timestamp` attribute (newer edges weigh more). Default False keeps the original static behavior."}
+    )
+    temporal_weight_floor: float = field(
+        default=0.5,
+        metadata={"help": "Recency multiplier applied to the oldest edge when temporal_weighting is on; the newest edge gets 1.0 and others interpolate linearly. Edges without a real timestamp (<=0, e.g. synonymy/passage) are left unscaled (factor 1.0)."}
+    )
     
     
     # QA specific attributes

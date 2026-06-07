@@ -4,7 +4,6 @@ from tqdm import tqdm
 
 from .base import BaseEmbeddingModel
 from ..utils.config_utils import BaseConfig
-from ..prompts.linking import get_query_instruction
 import requests
 
 class VLLMEmbeddingModel(BaseEmbeddingModel):
@@ -22,38 +21,48 @@ class VLLMEmbeddingModel(BaseEmbeddingModel):
 
         self.url = global_config.embedding_base_url
 
-        self.search_query_instr = set([
-            get_query_instruction('query_to_fact'),
-            get_query_instruction('query_to_passage')
-        ])
-
-    def call_model(self, input_text) -> List[np.ndarray]:
+    def call_model(self, input_text) -> np.ndarray:
         if isinstance(input_text, str):
             input_text = [input_text]
         headers = {
             "Content-Type": "application/json"
         }
-        
+
         payload = {
             "model": self.model_id,
             "input": input_text,
         }
 
-        response = requests.post(self.base_url, headers=headers, json=payload)
+        response = requests.post(self.url, headers=headers, json=payload)
         response.raise_for_status()
         result = response.json()
-        return np.array([result["data"][i]["embedding"] for i in range(len(result["data"]))])
+        return np.array([d["embedding"] for d in result["data"]])
 
-    def encode(self, texts: List[str]) -> np.array:
-        response = self.call_model(texts)
-        return response
+    def encode(self, texts: List[str]) -> np.ndarray:
+        return self.call_model(texts)
 
-    def batch_encode(self, texts: List[str], **kwargs) -> None:
-        if len(texts) < self.batch_size:
-            return self.encode(texts)
-        
-        results = []
-        batch_indexes = list(range(0, len(texts), self.batch_size))
-        for i in tqdm(batch_indexes, desc="Batch Encoding"):
-            results.append(self.encode(texts[i:i + self.batch_size]))
-        return np.concatenate(results)
+    def batch_encode(self, texts: List[str], **kwargs) -> np.ndarray:
+        if isinstance(texts, str):
+            texts = [texts]
+
+        # Instruction is applied to the *query* side only (passages are encoded
+        # as-is), preserving the asymmetric encoding these models expect.
+        instruction = kwargs.get("instruction", "")
+        if instruction:
+            texts = [f"{instruction}\n{text}" for text in texts]
+
+        if len(texts) <= self.batch_size:
+            embeddings = self.encode(texts)
+        else:
+            results = []
+            for i in tqdm(range(0, len(texts), self.batch_size), desc="Batch Encoding"):
+                results.append(self.encode(texts[i:i + self.batch_size]))
+            embeddings = np.concatenate(results)
+
+        # The vLLM /v1/embeddings endpoint usually returns raw (un-normalized)
+        # vectors. HippoRAG scores with dot product as a cosine proxy, so we
+        # L2-normalize client-side unless explicitly disabled.
+        norm = kwargs.get("norm", self.global_config.embedding_return_as_normalized)
+        if norm:
+            embeddings = (embeddings.T / np.linalg.norm(embeddings, axis=1)).T
+        return embeddings
