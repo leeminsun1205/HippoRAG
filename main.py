@@ -63,6 +63,53 @@ def get_gold_answers(samples):
 
     return gold_answers
 
+def _chunk_text(text, chunk_size, overlap):
+    """Sliding-window chunking matching DyG-RAG (tiktoken cl100k_base, 1200/64).
+
+    Uses tiktoken when available so chunk boundaries match DyG-RAG/IA-RAG exactly;
+    falls back to whitespace-word windows otherwise (approximate — words are coarser
+    than tokens, so install tiktoken for a faithful comparison).
+    """
+    step = max(1, chunk_size - overlap)
+    try:
+        import tiktoken
+        enc = tiktoken.get_encoding("cl100k_base")
+        toks = enc.encode(text)
+        if len(toks) <= chunk_size:
+            return [text]
+        return [enc.decode(toks[s:s + chunk_size]).strip()
+                for s in range(0, len(toks), step)]
+    except ImportError:
+        words = text.split()
+        if len(words) <= chunk_size:
+            return [text]
+        return [" ".join(words[s:s + chunk_size]) for s in range(0, len(words), step)]
+
+
+def build_docs(corpus, chunk_size=0, chunk_overlap=64):
+    """Build the (docs, timestamps, provenances) lists fed to index().
+
+    When chunk_size <= 0 this is the original one-doc-per-entry behavior (static
+    benchmarks unaffected). When chunk_size > 0 each document's text is split into
+    sliding-window chunks; every chunk inherits its parent doc's timestamp/provenance
+    so the temporal metadata plumbing stays intact (text_to_meta keyed by chunk text).
+    """
+    docs, timestamps, provenances = [], [], []
+    for doc in corpus:
+        title = doc['title']
+        ts = doc.get('timestamp', 0)
+        prov = doc.get('provenance', title)
+        if chunk_size and chunk_size > 0:
+            pieces = _chunk_text(doc['text'], chunk_size, chunk_overlap)
+        else:
+            pieces = [doc['text']]
+        for piece in pieces:
+            docs.append(f"{title}\n{piece}")
+            timestamps.append(ts)
+            provenances.append(prov)
+    return docs, timestamps, provenances
+
+
 def main():
     parser = argparse.ArgumentParser(description="HippoRAG retrieval and QA")
     parser.add_argument('--dataset', type=str, default='musique', help='Dataset name')
@@ -77,6 +124,10 @@ def main():
     parser.add_argument('--save_dir', type=str, default='outputs', help='Save directory')
     parser.add_argument('--temporal_weighting', type=str, default='false',
                         help='If True, scale PPR edge weights by recency (newer edges weigh more). Default False = static behavior.')
+    parser.add_argument('--chunk_size', type=int, default=0,
+                        help='If > 0, split each corpus doc into sliding-window chunks of this many tokens before indexing (DyG-RAG/IA-RAG use 1200). 0 = no chunking = original behavior, so static benchmarks are unaffected.')
+    parser.add_argument('--chunk_overlap', type=int, default=64,
+                        help='Token overlap between chunks when --chunk_size > 0 (DyG-RAG default 64).')
     args = parser.parse_args()
 
     dataset_name = args.dataset
@@ -87,14 +138,16 @@ def main():
         save_dir = save_dir + '/' + dataset_name
     else:
         save_dir = save_dir + '_' + dataset_name
+    # Chunked and non-chunked indexes must not share a working dir, or the cached
+    # graph from one would be silently reused by the other.
+    if args.chunk_size and args.chunk_size > 0:
+        save_dir = save_dir + f'_chunk{args.chunk_size}'
 
     corpus_path = f"reproduce/dataset/{dataset_name}_corpus.json"
     with open(corpus_path, "r") as f:
         corpus = json.load(f)
 
-    docs = [f"{doc['title']}\n{doc['text']}" for doc in corpus]
-    doc_timestamps = [doc.get('timestamp', 0) for doc in corpus]
-    doc_provenances = [doc.get('provenance', doc['title']) for doc in corpus]
+    docs, doc_timestamps, doc_provenances = build_docs(corpus, args.chunk_size, args.chunk_overlap)
 
     force_index_from_scratch = string_to_bool(args.force_index_from_scratch)
     force_openie_from_scratch = string_to_bool(args.force_openie_from_scratch)
@@ -126,9 +179,11 @@ def main():
         graph_type="facts_and_sim_passage_node_unidirectional",
         embedding_batch_size=8,
         max_new_tokens=None,
-        corpus_len=len(corpus),
+        corpus_len=len(docs),
         openie_mode=args.openie_mode,
-        temporal_weighting=string_to_bool(args.temporal_weighting)
+        temporal_weighting=string_to_bool(args.temporal_weighting),
+        chunk_size=args.chunk_size,
+        chunk_overlap=args.chunk_overlap
     )
 
     logging.basicConfig(level=logging.INFO)

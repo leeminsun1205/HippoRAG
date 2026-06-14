@@ -165,9 +165,17 @@ class BaseConfig:
         default=False,
         metadata={"help": "Whether the graph is directed or not."}
     )
-    
-    
-    
+    chunk_size: int = field(
+        default=0,
+        metadata={"help": "If > 0, split each corpus document into sliding-window chunks of this many tokens BEFORE indexing (done in main.py, not in index()). 0 = no chunking = original behavior. Matches DyG-RAG/IA-RAG when set to 1200."}
+    )
+    chunk_overlap: int = field(
+        default=64,
+        metadata={"help": "Token overlap between consecutive chunks when chunk_size > 0 (DyG-RAG default 64). Ignored when chunk_size == 0."}
+    )
+
+
+
     # Retrieval specific attributes
     linking_top_k: int = field(
         default=5,
