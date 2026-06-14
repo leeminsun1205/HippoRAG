@@ -128,6 +128,8 @@ def main():
                         help='If > 0, split each corpus doc into sliding-window chunks of this many tokens before indexing (DyG-RAG/IA-RAG use 1200). 0 = no chunking = original behavior, so static benchmarks are unaffected.')
     parser.add_argument('--chunk_overlap', type=int, default=64,
                         help='Token overlap between chunks when --chunk_size > 0 (DyG-RAG default 64).')
+    parser.add_argument('--fact_time_anchor', type=str, default='false',
+                        help='D1 (opt-in). If True, the LLM assigns a timestamp to each extracted triple (post-OpenIE pass) and that per-fact time is put on the fact edge instead of the doc-level timestamp. Uses a separate working dir (_ft suffix). Default false = original behavior.')
     args = parser.parse_args()
 
     dataset_name = args.dataset
@@ -142,6 +144,10 @@ def main():
     # graph from one would be silently reused by the other.
     if args.chunk_size and args.chunk_size > 0:
         save_dir = save_dir + f'_chunk{args.chunk_size}'
+    # D1: keep the per-fact-time graph in its own working dir so the baseline
+    # graph/cache is never overwritten and stays reproducible.
+    if string_to_bool(args.fact_time_anchor):
+        save_dir = save_dir + '_ft'
 
     corpus_path = f"reproduce/dataset/{dataset_name}_corpus.json"
     with open(corpus_path, "r") as f:
@@ -183,7 +189,8 @@ def main():
         openie_mode=args.openie_mode,
         temporal_weighting=string_to_bool(args.temporal_weighting),
         chunk_size=args.chunk_size,
-        chunk_overlap=args.chunk_overlap
+        chunk_overlap=args.chunk_overlap,
+        fact_time_anchor=string_to_bool(args.fact_time_anchor)
     )
 
     logging.basicConfig(level=logging.INFO)

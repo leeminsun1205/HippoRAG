@@ -173,6 +173,10 @@ class BaseConfig:
         default=64,
         metadata={"help": "Token overlap between consecutive chunks when chunk_size > 0 (DyG-RAG default 64). Ignored when chunk_size == 0."}
     )
+    fact_time_anchor: bool = field(
+        default=False,
+        metadata={"help": "D1 (opt-in, default False = original behavior). If True, run a post-OpenIE pass that asks the LLM to assign a timestamp to each extracted triple (adapted from DyG-RAG temporal parsing), and use that per-fact time on the fact edge instead of the document-level timestamp. Needed because real temporal datasets (timeqa/complextr) carry no per-passage timestamp. Use a separate working dir (main.py appends _ft) so the baseline graph is untouched."}
+    )
 
 
 

@@ -170,6 +170,11 @@ class HippoRAG:
         self.text_to_meta = {}
         self.node_to_node_temporal = {}
 
+        # D1 (fact_time_anchor): {chunk_key: [numeric_time_per_triple]} produced by
+        # `_extract_fact_times`. Empty unless `fact_time_anchor` is on, so the
+        # default path and retrieval-only sessions keep the original behavior.
+        self.fact_time_map = {}
+
 
     def _update_edge_meta(self, edge: Tuple[str, str], t_time, t_prov):
         """Records the most recent (timestamp, provenance) for an edge.
@@ -189,6 +194,115 @@ class HippoRAG:
                 self.node_to_node_temporal[edge] = (t_time, t_prov)
         except TypeError:
             self.node_to_node_temporal[edge] = (t_time, t_prov)
+
+
+    @staticmethod
+    def _parse_time_to_int(time_str) -> int:
+        """Converts a DyG-style time string to a sortable integer (YYYYMMDD).
+
+        Bigger = more recent, so it plugs straight into `_update_edge_meta`
+        (latest-wins, uses `>`) and `_get_ppr_edge_weights` (treats `> 0` as a
+        real time). Returns 0 for 'static'/empty/unparseable, matching the
+        "no real timestamp" convention used elsewhere.
+
+            "2023-05-14" -> 20230514   "2023-05" -> 20230500
+            "2023"       -> 20230000   "static"  -> 0
+        """
+        if not isinstance(time_str, str):
+            return 0
+        s = time_str.strip().lower()
+        if not s or s == "static":
+            return 0
+        m = re.match(r"^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?", s)
+        if not m:
+            # last resort: a bare 4-digit year somewhere in the string
+            y = re.search(r"\b(1\d{3}|2\d{3})\b", s)
+            return int(y.group(1)) * 10000 if y else 0
+        year = int(m.group(1))
+        month = int(m.group(2)) if m.group(2) else 0
+        day = int(m.group(3)) if m.group(3) else 0
+        # Guard against artifacts like a "1995-1998" range parsed as month=19.
+        if not (1 <= month <= 12):
+            month, day = 0, 0
+        if not (1 <= day <= 31):
+            day = 0
+        return year * 10000 + month * 100 + day
+
+
+    def _extract_fact_times(self, chunk_ids: List[str], chunk_triples: List[List]) -> Dict[str, List[int]]:
+        """D1: ask the LLM to assign a timestamp to each extracted triple.
+
+        Adapted from DyG-RAG's temporal-parsing protocol, but kept as an
+        isolated post-OpenIE pass so it touches neither the OpenIE backends nor
+        the triple schema. One LLM call per chunk (only chunks with triples),
+        cached in `fact_times.json` under the working dir so re-runs are free.
+
+        Returns {chunk_key: [time_int_per_triple]} aligned to `chunk_triples`.
+        On any parse/length problem we fall back to 0 (= use the doc-level
+        timestamp), so a flaky extraction degrades to the original behavior
+        rather than corrupting the graph.
+        """
+        cache_path = os.path.join(self.working_dir, "fact_times.json")
+        cache: Dict[str, List[int]] = {}
+        if not self.global_config.force_index_from_scratch and os.path.exists(cache_path):
+            try:
+                with open(cache_path, "r") as f:
+                    cache = json.load(f)
+            except Exception as e:
+                logger.warning(f"Could not read fact_times cache ({e}); recomputing.")
+                cache = {}
+
+        system_msg = (
+            "You assign a time to each fact extracted from a passage. "
+            "Use ONLY information in the passage; resolve relative dates ('that year', "
+            "'two years later') against explicit dates in the passage. "
+            "For each fact output one time string with the finest granularity supported "
+            "by the passage, in one of these formats: YYYY-MM-DD, YYYY-MM, YYYY, or the "
+            "literal 'static' if the fact has no time or is always true. "
+            'Respond with ONLY a JSON object: {"times": ["...", ...]} with exactly one '
+            "entry per fact, in the same order as the numbered facts."
+        )
+
+        result: Dict[str, List[int]] = {}
+        for chunk_key, triples in tqdm(list(zip(chunk_ids, chunk_triples)), desc="Extracting fact times"):
+            n = len(triples)
+            if n == 0:
+                result[chunk_key] = []
+                continue
+            if chunk_key in cache and len(cache[chunk_key]) == n:
+                result[chunk_key] = cache[chunk_key]
+                continue
+
+            passage = self.chunk_embedding_store.get_row(chunk_key)["content"]
+            numbered = "\n".join(f"{i+1}. {tuple(t)}" for i, t in enumerate(triples))
+            user_msg = f"Passage:\n```\n{passage}\n```\n\nFacts:\n{numbered}"
+            messages = [
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": user_msg},
+            ]
+
+            times = [0] * n
+            try:
+                resp = self.llm_model.infer(messages)[0]
+                match = re.search(r"\{.*\}", resp, re.DOTALL)
+                parsed = json.loads(match.group(0)) if match else {}
+                raw_times = parsed.get("times", [])
+                for i in range(min(n, len(raw_times))):
+                    times[i] = self._parse_time_to_int(raw_times[i])
+            except Exception as e:
+                logger.warning(f"fact-time extraction failed for chunk {chunk_key} ({e}); "
+                               f"falling back to doc-level timestamp for its facts.")
+
+            result[chunk_key] = times
+            cache[chunk_key] = times
+
+        try:
+            with open(cache_path, "w") as f:
+                json.dump(cache, f)
+        except Exception as e:
+            logger.warning(f"Could not write fact_times cache ({e}).")
+
+        return result
 
 
     def initialize_graph(self):
@@ -285,6 +399,12 @@ class HippoRAG:
         chunk_triples = [[text_processing(t) for t in triple_results_dict[chunk_id].triples] for chunk_id in chunk_ids]
         entity_nodes, chunk_triple_entities = extract_entity_nodes(chunk_triples)
         facts = flatten_facts(chunk_triples)
+
+        # D1: per-fact time anchors (opt-in). Populates self.fact_time_map, which
+        # add_fact_edges consults when fact_time_anchor is on.
+        if self.global_config.fact_time_anchor:
+            logger.info("Extracting per-fact time anchors (fact_time_anchor=True)")
+            self.fact_time_map = self._extract_fact_times(chunk_ids, chunk_triples)
 
         logger.info(f"Encoding Entities")
         self.entity_embedding_store.insert_strings(entity_nodes)
@@ -802,8 +922,11 @@ class HippoRAG:
             t_time = meta[0]
             t_prov = meta[1]
 
+            # D1: per-triple time anchors for this chunk (empty unless fact_time_anchor on).
+            triple_times = self.fact_time_map.get(chunk_key, []) if self.global_config.fact_time_anchor else []
+
             if chunk_key not in current_graph_nodes:
-                for triple in triples:
+                for t_idx, triple in enumerate(triples):
                     triple = tuple(triple)
 
                     node_key = compute_mdhash_id(content=triple[0], prefix=("entity-"))
@@ -814,8 +937,14 @@ class HippoRAG:
                     self.node_to_node_stats[(node_2_key, node_key)] = self.node_to_node_stats.get(
                         (node_2_key, node_key), 0.0) + 1
 
-                    self._update_edge_meta((node_key, node_2_key), t_time, t_prov)
-                    self._update_edge_meta((node_2_key, node_key), t_time, t_prov)
+                    # Use the per-fact time when D1 produced a real (>0) one for this
+                    # triple; otherwise keep the document-level timestamp.
+                    edge_time = t_time
+                    if t_idx < len(triple_times) and triple_times[t_idx] > 0:
+                        edge_time = triple_times[t_idx]
+
+                    self._update_edge_meta((node_key, node_2_key), edge_time, t_prov)
+                    self._update_edge_meta((node_2_key, node_key), edge_time, t_prov)
 
                     entities_in_chunk.add(node_key)
                     entities_in_chunk.add(node_2_key)
