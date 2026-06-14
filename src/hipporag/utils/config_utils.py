@@ -177,6 +177,10 @@ class BaseConfig:
         default=False,
         metadata={"help": "D1 (opt-in, default False = original behavior). If True, run a post-OpenIE pass that asks the LLM to assign a timestamp to each extracted triple (adapted from DyG-RAG temporal parsing), and use that per-fact time on the fact edge instead of the document-level timestamp. Needed because real temporal datasets (timeqa/complextr) carry no per-passage timestamp. Use a separate working dir (main.py appends _ft) so the baseline graph is untouched."}
     )
+    time_cot: bool = field(
+        default=False,
+        metadata={"help": "D2 (opt-in, default False = original behavior). If True, at QA time the retrieved facts are ordered chronologically by their edge timestamp into a timeline that is prepended to the QA prompt with a temporal-reasoning instruction (adapted from DyG-RAG's Time Chain-of-Thought). QA-time only -- does NOT change the graph, so it reuses the existing working dir. Inert unless edges carry real timestamps (i.e. pair with fact_time_anchor on real datasets)."}
+    )
 
 
 

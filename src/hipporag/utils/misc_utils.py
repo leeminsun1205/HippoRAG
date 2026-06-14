@@ -39,6 +39,9 @@ class QuerySolution:
     answer: str = None
     gold_answers: List[str] = None
     gold_docs: Optional[List[str]] = None
+    # D2 (time_cot): retrieved facts as [subject, predicate, object, time_int],
+    # used to build the chronological timeline fed to QA. None unless time_cot is on.
+    facts: Optional[List] = None
 
 
     def to_dict(self):
@@ -49,6 +52,7 @@ class QuerySolution:
             "docs": self.docs[:5],
             "doc_scores": [round(v, 4) for v in self.doc_scores.tolist()[:5]]  if self.doc_scores is not None else None,
             "gold_docs": self.gold_docs,
+            "facts": self.facts,
         }
 
 def text_processing(text):

@@ -130,6 +130,8 @@ def main():
                         help='Token overlap between chunks when --chunk_size > 0 (DyG-RAG default 64).')
     parser.add_argument('--fact_time_anchor', type=str, default='false',
                         help='D1 (opt-in). If True, the LLM assigns a timestamp to each extracted triple (post-OpenIE pass) and that per-fact time is put on the fact edge instead of the doc-level timestamp. Uses a separate working dir (_ft suffix). Default false = original behavior.')
+    parser.add_argument('--time_cot', type=str, default='false',
+                        help='D2 (opt-in). If True, retrieved facts are ordered chronologically into a timeline prepended to the QA prompt with a temporal-reasoning instruction (DyG-RAG Time-CoT). QA-time only; reuses the same working dir. Pair with --fact_time_anchor for real timestamps. Default false = original behavior.')
     args = parser.parse_args()
 
     dataset_name = args.dataset
@@ -190,7 +192,8 @@ def main():
         temporal_weighting=string_to_bool(args.temporal_weighting),
         chunk_size=args.chunk_size,
         chunk_overlap=args.chunk_overlap,
-        fact_time_anchor=string_to_bool(args.fact_time_anchor)
+        fact_time_anchor=string_to_bool(args.fact_time_anchor),
+        time_cot=string_to_bool(args.time_cot)
     )
 
     logging.basicConfig(level=logging.INFO)
@@ -204,7 +207,10 @@ def main():
     # Named by the temporal_weighting flag so on/off A/B runs don't overwrite.
     queries_solutions = res[0]
     tw_flag = 'on' if config.temporal_weighting else 'off'
-    pred_path = os.path.join(save_dir, f"predictions_tw_{tw_flag}.json")
+    # D2: mark Time-CoT runs so they don't overwrite the non-CoT predictions in
+    # the same working dir. Omitted when off so baseline filenames are unchanged.
+    cot_suffix = '_cot_on' if config.time_cot else ''
+    pred_path = os.path.join(save_dir, f"predictions_tw_{tw_flag}{cot_suffix}.json")
     with open(pred_path, "w") as f:
         json.dump([qs.to_dict() for qs in queries_solutions], f, indent=2)
 

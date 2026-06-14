@@ -305,6 +305,77 @@ class HippoRAG:
         return result
 
 
+    def _fact_edge_time(self, fact) -> int:
+        """D2: read the timestamp stored on a fact's entity-entity edge.
+
+        Mirrors how `graph_search_with_fact_entities` derives entity node keys
+        (lower-cased subject/object) so the lookup hits the same vertices.
+        Returns 0 when the edge or the timestamp attribute is absent, so facts
+        without a real time are treated as timeless background.
+        """
+        try:
+            node_key = compute_mdhash_id(content=fact[0].lower(), prefix="entity-")
+            node2_key = compute_mdhash_id(content=fact[2].lower(), prefix="entity-")
+        except Exception:
+            return 0
+        v1 = self.node_name_to_vertex_idx.get(node_key)
+        v2 = self.node_name_to_vertex_idx.get(node2_key)
+        if v1 is None or v2 is None or 'timestamp' not in self.graph.es.attributes():
+            return 0
+        eid = self.graph.get_eid(v1, v2, directed=False, error=False)
+        if eid == -1:
+            return 0
+        t = self.graph.es[eid]['timestamp']
+        return t if isinstance(t, (int, float)) else 0
+
+
+    @staticmethod
+    def _format_time_int(t) -> str:
+        """Inverse of `_parse_time_to_int` for display: 20150300 -> '2015-03'."""
+        if not isinstance(t, (int, float)) or t <= 0:
+            return ""
+        t = int(t)
+        year, month, day = t // 10000, (t // 100) % 100, t % 100
+        s = f"{year:04d}"
+        if month:
+            s += f"-{month:02d}"
+            if day:
+                s += f"-{day:02d}"
+        return s
+
+
+    def _build_timeline_block(self, facts) -> str:
+        """D2: render retrieved facts as a chronological timeline + a Time-CoT
+        instruction, to prepend to the QA prompt. Adapted from DyG-RAG's
+        dynamic_QA prompt. Returns '' if there is nothing to show."""
+        timed, static = [], []
+        for f in facts:
+            if len(f) < 3:
+                continue
+            text = f"{f[0]} {f[1]} {f[2]}"
+            t = f[3] if len(f) > 3 else 0
+            if isinstance(t, (int, float)) and t > 0:
+                timed.append((int(t), text))
+            else:
+                static.append(text)
+        if not timed and not static:
+            return ''
+
+        timed.sort(key=lambda x: x[0])
+        lines = [
+            "Below is a timeline of facts relevant to the question, ordered chronologically. "
+            "Before answering, identify the time scope the question asks about, order the events, "
+            "and track how states persist or change over time; a state holds until a later event "
+            "changes it.\n",
+            "Timeline:",
+        ]
+        for i, (t, text) in enumerate(timed, 1):
+            lines.append(f"Event {i} [{self._format_time_int(t)}]: {text}")
+        if static:
+            lines.append("Background facts (no specific time): " + "; ".join(static))
+        return "\n".join(lines) + "\n\n"
+
+
     def initialize_graph(self):
         """
         Initializes a graph using a Pickle file if available or creates a new graph.
@@ -579,7 +650,13 @@ class HippoRAG:
 
             top_k_docs = [self.chunk_embedding_store.get_row(self.passage_node_keys[idx])["content"] for idx in sorted_doc_ids[:num_to_retrieve]]
 
-            retrieval_results.append(QuerySolution(question=query, docs=top_k_docs, doc_scores=sorted_doc_scores[:num_to_retrieve]))
+            # D2: attach the reranked facts with their edge timestamps so qa()
+            # can build a chronological timeline. Empty on DPR fallback.
+            query_facts = None
+            if self.global_config.time_cot:
+                query_facts = [[f[0], f[1], f[2], self._fact_edge_time(f)] for f in top_k_facts]
+
+            retrieval_results.append(QuerySolution(question=query, docs=top_k_docs, doc_scores=sorted_doc_scores[:num_to_retrieve], facts=query_facts))
 
         retrieve_end_time = time.time()  # Record end time
 
@@ -852,6 +929,9 @@ class HippoRAG:
             retrieved_passages = query_solution.docs[:self.global_config.qa_top_k]
 
             prompt_user = ''
+            # D2: prepend the chronological fact timeline + Time-CoT instruction.
+            if self.global_config.time_cot and query_solution.facts:
+                prompt_user += self._build_timeline_block(query_solution.facts)
             for passage in retrieved_passages:
                 prompt_user += f'Wikipedia Title: {passage}\n\n'
             prompt_user += 'Question: ' + query_solution.question + '\nThought: '
