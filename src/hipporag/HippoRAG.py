@@ -947,7 +947,18 @@ class HippoRAG:
             all_qa_messages.append(
                 self.prompt_template_manager.render(name=f'rag_qa_{prompt_dataset_name}', prompt_user=prompt_user))
 
-        all_qa_results = [self.llm_model.infer(qa_messages) for qa_messages in tqdm(all_qa_messages, desc="QA Reading")]
+        # Per-call error handling: a single failed QA inference (e.g. OpenAI
+        # content-moderation 400 on a sensitive passage, or an exhausted retry)
+        # must not abort the whole run. On failure we record an empty answer and
+        # continue, so the remaining questions still get answered and predictions
+        # are saved. Successful calls are unchanged.
+        all_qa_results = []
+        for qa_messages in tqdm(all_qa_messages, desc="QA Reading"):
+            try:
+                all_qa_results.append(self.llm_model.infer(qa_messages))
+            except Exception as e:
+                logger.warning(f"QA inference failed for one query ({e}); using empty answer and continuing.")
+                all_qa_results.append(("", {"error": str(e)}, False))
 
         all_response_message, all_metadata, all_cache_hit = zip(*all_qa_results)
         all_response_message, all_metadata = list(all_response_message), list(all_metadata)
