@@ -183,6 +183,16 @@ class CacheOpenAI(BaseLLM):
             # TODO strange version change in openai protocol, but our current vllm version not changed yet
             params['max_tokens'] = params.pop('max_completion_tokens')
 
+        # GPT-5 family and o-series are reasoning models: they reject temperature
+        # != 1 (the only supported value) and are steered via `reasoning_effort`
+        # instead. We drop temperature and request minimal effort so reasoning
+        # tokens don't consume the whole max_completion_tokens budget -- otherwise
+        # the model can return empty content and silently break OpenIE.
+        model_name = params.get('model', '')
+        if 'gpt-5' in model_name or model_name.startswith(('o1', 'o3', 'o4')):
+            params.pop('temperature', None)
+            params.setdefault('reasoning_effort', 'minimal')
+
         response = self.openai_client.chat.completions.create(**params)
 
         response_message = response.choices[0].message.content
