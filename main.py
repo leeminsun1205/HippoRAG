@@ -1,4 +1,5 @@
 import os
+import shutil
 from typing import List
 import json
 import argparse
@@ -154,6 +155,24 @@ def main():
     # graph/cache is never overwritten and stays reproducible.
     if string_to_bool(args.fact_time_anchor):
         save_dir = save_dir + '_ft'
+
+    # D1 convenience: when running the _ft variant, reuse the baseline (non-_ft)
+    # OpenIE cache if it exists, so the _ft graph is built from the SAME triples
+    # as the baseline -- only the per-fact time pass is added on top. This avoids
+    # re-running OpenIE (cost) and the re-sampling that would otherwise make the
+    # _ft graph differ from the baseline (the confound we kept hitting). Skipped
+    # if the user forces a fresh OpenIE run, or if the _ft cache already exists.
+    if (string_to_bool(args.fact_time_anchor) and save_dir.endswith('_ft')
+            and not string_to_bool(args.force_openie_from_scratch)):
+        _openie_fname = f'openie_results_ner_{args.llm_name.replace("/", "_")}.json'
+        _ft_openie = os.path.join(save_dir, _openie_fname)
+        _base_openie = os.path.join(save_dir[:-len('_ft')], _openie_fname)
+        if (not os.path.exists(_ft_openie)) and os.path.exists(_base_openie):
+            os.makedirs(save_dir, exist_ok=True)
+            shutil.copy(_base_openie, _ft_openie)
+            print(f"[fact_time_anchor] Reused baseline OpenIE cache so the _ft graph "
+                  f"matches the baseline (only the per-fact time pass runs):\n"
+                  f"  {_base_openie}\n  -> {_ft_openie}")
 
     corpus_path = f"reproduce/dataset/{dataset_name}_corpus.json"
     with open(corpus_path, "r") as f:
