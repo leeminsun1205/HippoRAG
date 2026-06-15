@@ -15,6 +15,7 @@ import igraph as ig
 import numpy as np
 from collections import defaultdict
 import re
+import ast
 import time
 
 from .llm import _get_llm_class, BaseLLM
@@ -175,6 +176,10 @@ class HippoRAG:
         # default path and retrieval-only sessions keep the original behavior.
         self.fact_time_map = {}
 
+        # D3 (time_scoped): per-fact timestamps aligned to self.fact_node_keys,
+        # filled in prepare_retrieval_objects only when time_scoped is on.
+        self.fact_times = None
+
 
     def _update_edge_meta(self, edge: Tuple[str, str], t_time, t_prov):
         """Records the most recent (timestamp, provenance) for an edge.
@@ -328,6 +333,39 @@ class HippoRAG:
         t = self.graph.es[eid]['timestamp']
         return t if isinstance(t, (int, float)) else 0
 
+
+    @staticmethod
+    def _parse_query_year(query: str) -> int:
+        """D3: the time the question asks about, as YYYY0000 (0 if no year found).
+
+        Uses the LAST 4-digit year in the query (the temporal anchor usually
+        trails, matching reproduce/build_dyg.py's parse_year). Year-granular is
+        enough for proximity scoring.
+        """
+        years = re.findall(r"\b(1\d{3}|2\d{3})\b", query or "")
+        return int(years[-1]) * 10000 if years else 0
+
+    def _apply_time_scope(self, query: str, query_fact_scores: np.ndarray) -> np.ndarray:
+        """D3: multiply fact scores by a Gaussian temporal-proximity weight.
+
+        Facts whose edge timestamp is near the year the question asks about are
+        kept; time-mismatched facts are down-weighted. Facts with no real time
+        (<=0) and queries with no parseable year stay neutral (x1.0), so this
+        never penalizes the static / no-time case.
+        """
+        scores = np.asarray(query_fact_scores)
+        if self.fact_times is None or scores.ndim == 0 or len(self.fact_times) != scores.shape[0]:
+            return query_fact_scores
+        q_t = self._parse_query_year(query)
+        if q_t <= 0:
+            return query_fact_scores
+
+        tau = max(self.global_config.time_scope_tau, 1e-6)
+        ft = self.fact_times  # YYYYMMDD ints, 0 = no real time
+        delta_years = np.abs(ft - q_t) / 10000.0
+        proximity = np.exp(-((delta_years / tau) ** 2))
+        proximity = np.where(ft > 0, proximity, 1.0)  # no-time facts stay neutral
+        return scores * proximity
 
     @staticmethod
     def _format_time_int(t) -> str:
@@ -1484,6 +1522,19 @@ class HippoRAG:
 
         self.fact_embeddings = np.array(self.fact_embedding_store.get_embeddings(self.fact_node_keys))
 
+        # D3: precompute per-fact timestamps (aligned to fact_node_keys) once, by
+        # reading each fact's edge time from the graph. Only when time_scoped is on.
+        if self.global_config.time_scoped:
+            times = np.zeros(len(self.fact_node_keys))
+            for i, key in enumerate(self.fact_node_keys):
+                try:
+                    triple = ast.literal_eval(self.fact_embedding_store.get_row(key)["content"])
+                    times[i] = self._fact_edge_time(triple)
+                except Exception:
+                    times[i] = 0
+            self.fact_times = times
+            logger.info(f"time_scoped on: {(times > 0).sum()}/{len(times)} facts have a real timestamp")
+
         all_openie_info, chunk_keys_to_process = self.load_existing_openie([])
 
         self.proc_triples_to_docs = {}
@@ -1599,6 +1650,9 @@ class HippoRAG:
             query_fact_scores = np.dot(self.fact_embeddings, query_embedding.T) # shape: (#facts, )
             query_fact_scores = np.squeeze(query_fact_scores) if query_fact_scores.ndim == 2 else query_fact_scores
             query_fact_scores = min_max_normalize(query_fact_scores)
+            # D3: scope fact scores to the time the question asks about.
+            if self.global_config.time_scoped:
+                query_fact_scores = self._apply_time_scope(query, query_fact_scores)
             return query_fact_scores
         except Exception as e:
             logger.error(f"Error computing fact scores: {str(e)}")

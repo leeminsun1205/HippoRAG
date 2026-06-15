@@ -132,6 +132,10 @@ def main():
                         help='D1 (opt-in). If True, the LLM assigns a timestamp to each extracted triple (post-OpenIE pass) and that per-fact time is put on the fact edge instead of the doc-level timestamp. Uses a separate working dir (_ft suffix). Default false = original behavior.')
     parser.add_argument('--time_cot', type=str, default='false',
                         help='D2 (opt-in). If True, retrieved facts are ordered chronologically into a timeline prepended to the QA prompt with a temporal-reasoning instruction (DyG-RAG Time-CoT). QA-time only; reuses the same working dir. Pair with --fact_time_anchor for real timestamps. Default false = original behavior.')
+    parser.add_argument('--time_scoped', type=str, default='false',
+                        help='D3 (opt-in). If True, fact scores are weighted by temporal proximity to the year asked in the question (scopes to the asked time, not newest). Retrieval-time only; reuses the same working dir. Pair with --fact_time_anchor for real timestamps. Default false = original behavior.')
+    parser.add_argument('--time_scope_tau', type=float, default=3.0,
+                        help='D3 Gaussian decay scale in years for temporal proximity. Smaller = sharper scoping. Default 3.0.')
     args = parser.parse_args()
 
     dataset_name = args.dataset
@@ -193,7 +197,9 @@ def main():
         chunk_size=args.chunk_size,
         chunk_overlap=args.chunk_overlap,
         fact_time_anchor=string_to_bool(args.fact_time_anchor),
-        time_cot=string_to_bool(args.time_cot)
+        time_cot=string_to_bool(args.time_cot),
+        time_scoped=string_to_bool(args.time_scoped),
+        time_scope_tau=args.time_scope_tau
     )
 
     logging.basicConfig(level=logging.INFO)
@@ -210,7 +216,8 @@ def main():
     # D2: mark Time-CoT runs so they don't overwrite the non-CoT predictions in
     # the same working dir. Omitted when off so baseline filenames are unchanged.
     cot_suffix = '_cot_on' if config.time_cot else ''
-    pred_path = os.path.join(save_dir, f"predictions_tw_{tw_flag}{cot_suffix}.json")
+    ts_suffix = '_ts_on' if config.time_scoped else ''
+    pred_path = os.path.join(save_dir, f"predictions_tw_{tw_flag}{cot_suffix}{ts_suffix}.json")
     with open(pred_path, "w") as f:
         json.dump([qs.to_dict() for qs in queries_solutions], f, indent=2)
 

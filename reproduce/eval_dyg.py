@@ -135,7 +135,7 @@ def main():
         found = []
         for dirpath, _, files in os.walk(root):
             for fn in files:
-                if re.fullmatch(r"predictions_tw_(on|off)(_cot_on)?\.json", fn):
+                if re.fullmatch(r"predictions_tw_(on|off)(_cot_on)?(_ts_on)?\.json", fn):
                     found.append(os.path.join(dirpath, fn))
         pred_files = sorted(found)
     if not pred_files:

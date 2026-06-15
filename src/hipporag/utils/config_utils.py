@@ -181,6 +181,14 @@ class BaseConfig:
         default=False,
         metadata={"help": "D2 (opt-in, default False = original behavior). If True, at QA time the retrieved facts are ordered chronologically by their edge timestamp into a timeline that is prepended to the QA prompt with a temporal-reasoning instruction (adapted from DyG-RAG's Time Chain-of-Thought). QA-time only -- does NOT change the graph, so it reuses the existing working dir. Inert unless edges carry real timestamps (i.e. pair with fact_time_anchor on real datasets)."}
     )
+    time_scoped: bool = field(
+        default=False,
+        metadata={"help": "D3 (opt-in, default False = original behavior). If True, fact scores are multiplied by a temporal-proximity weight: facts whose edge timestamp is near the time the question asks about (parsed from the query) are boosted relative to time-mismatched ones. UNLIKE recency (temporal_weighting=newest-wins), this scopes to the *asked* time. Retrieval-time only -- reuses the existing graph/working dir. Facts with no real time, or queries with no parseable year, are left neutral (x1.0). Pair with fact_time_anchor for real per-fact times."}
+    )
+    time_scope_tau: float = field(
+        default=3.0,
+        metadata={"help": "D3 decay scale in YEARS for the temporal-proximity weight (Gaussian exp(-(delta_years/tau)^2)). Smaller = sharper scoping to the question's time. Default 3.0."}
+    )
 
 
 
