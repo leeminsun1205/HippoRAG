@@ -117,19 +117,21 @@ def _safe(x, n):
 
 def qa_row(name, a):
     n = a["n"]
-    return f"  {name:<18} {n:>3}  {_safe(a['em'],n):6.3f}  {_safe(a['f1'],n):6.3f}  {_safe(a['gold_hit'],n):6.3f}"
+    # Display as percentages (x100) with a hard 2 decimals.
+    return f"  {name:<18} {n:>3}  {100*_safe(a['em'],n):6.2f}  {100*_safe(a['f1'],n):6.2f}  {100*_safe(a['gold_hit'],n):6.2f}"
 
 
 def ver_row(name, a):
     m = a["ver_n"]
-    return (f"  {name:<18} {m:>3}  {_safe(a['gold_only'],m):7.3f} {_safe(a['stale_only'],m):7.3f} "
-            f"{_safe(a['both'],m):6.3f} {_safe(a['neither'],m):6.3f}")
+    # Display as percentages (x100) with a hard 2 decimals.
+    return (f"  {name:<18} {m:>3}  {100*_safe(a['gold_only'],m):7.2f} {100*_safe(a['stale_only'],m):7.2f} "
+            f"{100*_safe(a['both'],m):6.2f} {100*_safe(a['neither'],m):6.2f}")
 
 
 def report(label, agg):
     rows, tot = summarize(agg)
     print(f"\n=== {label} ===")
-    print(f"  {'category':<18} {'n':>3}  {'EM':>6}  {'F1':>6}  {'gold↑':>6}")
+    print(f"  {'category':<18} {'n':>3}  {'EM%':>6}  {'F1%':>6}  {'gold%↑':>6}")
     for c, a in rows:
         print(qa_row(c, a))
     print("  " + "-" * 44)
@@ -138,7 +140,7 @@ def report(label, agg):
     ver_rows = [(c, a) for c, a in rows if a["ver_n"] > 0]
     if ver_rows:
         print(f"\n  version-pick (versioned questions only)")
-        print(f"  {'category':<18} {'n':>3}  {'v-acc↑':>7} {'stale↓':>7} {'both':>6} {'none':>6}")
+        print(f"  {'category':<18} {'n':>3}  {'v-acc%↑':>7} {'stale%↓':>7} {'both%':>6} {'none%':>6}")
         for c, a in ver_rows:
             print(ver_row(c, a))
         vtot = {k: sum(a[k] for _, a in ver_rows) for k in AGG_KEYS}

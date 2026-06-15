@@ -137,6 +137,8 @@ def main():
                         help='D3 (opt-in). If True, fact scores are weighted by temporal proximity to the year asked in the question (scopes to the asked time, not newest). Retrieval-time only; reuses the same working dir. Pair with --fact_time_anchor for real timestamps. Default false = original behavior.')
     parser.add_argument('--time_scope_tau', type=float, default=3.0,
                         help='D3 Gaussian decay scale in years for temporal proximity. Smaller = sharper scoping. Default 3.0.')
+    parser.add_argument('--info_filter', type=str, default='false',
+                        help='Information filtering (opt-in). If True, drop degenerate triples (bare pronoun/stopword/empty subject or object) before building the graph (DyG-RAG style). Changes the graph -> separate working dir (_if suffix). Default false = original behavior.')
     args = parser.parse_args()
 
     dataset_name = args.dataset
@@ -151,28 +153,33 @@ def main():
     # graph from one would be silently reused by the other.
     if args.chunk_size and args.chunk_size > 0:
         save_dir = save_dir + f'_chunk{args.chunk_size}'
-    # D1: keep the per-fact-time graph in its own working dir so the baseline
-    # graph/cache is never overwritten and stays reproducible.
+    # D1 / info_filter: each changes the indexed graph, so it gets its own working
+    # dir (suffix appended in order) -> the baseline graph/cache is never overwritten.
     if string_to_bool(args.fact_time_anchor):
         save_dir = save_dir + '_ft'
+    if string_to_bool(args.info_filter):
+        save_dir = save_dir + '_if'
 
-    # D1 convenience: when running the _ft variant, reuse the baseline (non-_ft)
-    # OpenIE cache if it exists, so the _ft graph is built from the SAME triples
-    # as the baseline -- only the per-fact time pass is added on top. This avoids
-    # re-running OpenIE (cost) and the re-sampling that would otherwise make the
-    # _ft graph differ from the baseline (the confound we kept hitting). Skipped
-    # if the user forces a fresh OpenIE run, or if the _ft cache already exists.
-    if (string_to_bool(args.fact_time_anchor) and save_dir.endswith('_ft')
-            and not string_to_bool(args.force_openie_from_scratch)):
+    # Convenience: for a derived dir (_ft and/or _if), reuse the BASE (plain) OpenIE
+    # cache if it exists, so the graph is built from the SAME triples as the baseline
+    # -- only the per-fact time pass (D1) and/or the triple filtering (info_filter)
+    # are applied on top. Avoids re-running OpenIE and the re-sampling that would
+    # otherwise make the derived graph differ from the baseline. Skipped if the user
+    # forces a fresh OpenIE run, or if the derived cache already exists.
+    _base_save_dir = save_dir
+    for _suf in ("_if", "_ft"):
+        if _base_save_dir.endswith(_suf):
+            _base_save_dir = _base_save_dir[:-len(_suf)]
+    if (_base_save_dir != save_dir) and not string_to_bool(args.force_openie_from_scratch):
         _openie_fname = f'openie_results_ner_{args.llm_name.replace("/", "_")}.json'
-        _ft_openie = os.path.join(save_dir, _openie_fname)
-        _base_openie = os.path.join(save_dir[:-len('_ft')], _openie_fname)
-        if (not os.path.exists(_ft_openie)) and os.path.exists(_base_openie):
+        _derived_openie = os.path.join(save_dir, _openie_fname)
+        _base_openie = os.path.join(_base_save_dir, _openie_fname)
+        if (not os.path.exists(_derived_openie)) and os.path.exists(_base_openie):
             os.makedirs(save_dir, exist_ok=True)
-            shutil.copy(_base_openie, _ft_openie)
-            print(f"[fact_time_anchor] Reused baseline OpenIE cache so the _ft graph "
-                  f"matches the baseline (only the per-fact time pass runs):\n"
-                  f"  {_base_openie}\n  -> {_ft_openie}")
+            shutil.copy(_base_openie, _derived_openie)
+            print(f"[openie-reuse] Reused baseline OpenIE cache so the derived graph "
+                  f"matches the baseline (only D1/info_filter applied on top):\n"
+                  f"  {_base_openie}\n  -> {_derived_openie}")
 
     corpus_path = f"reproduce/dataset/{dataset_name}_corpus.json"
     with open(corpus_path, "r") as f:
@@ -218,7 +225,8 @@ def main():
         fact_time_anchor=string_to_bool(args.fact_time_anchor),
         time_cot=string_to_bool(args.time_cot),
         time_scoped=string_to_bool(args.time_scoped),
-        time_scope_tau=args.time_scope_tau
+        time_scope_tau=args.time_scope_tau,
+        info_filter=string_to_bool(args.info_filter)
     )
 
     logging.basicConfig(level=logging.INFO)
@@ -240,9 +248,15 @@ def main():
     with open(pred_path, "w") as f:
         json.dump([qs.to_dict() for qs in queries_solutions], f, indent=2)
 
-    print("\n" + "="*10 + " EVALUATION METRICS " + "="*10)
-    print("Retrieval Metrics:", res[3] if len(res) == 5 else "N/A")
-    print("QA Metrics:", res[4] if len(res) == 5 else "N/A")
+    # Display metrics as percentages with a hard 2 decimals.
+    def _fmt_pct(m):
+        if isinstance(m, dict):
+            return ", ".join(f"{k}: {v * 100:.2f}" for k, v in m.items())
+        return str(m)
+
+    print("\n" + "="*10 + " EVALUATION METRICS (%) " + "="*10)
+    print("Retrieval Metrics:", _fmt_pct(res[3]) if len(res) == 5 else "N/A")
+    print("QA Metrics:", _fmt_pct(res[4]) if len(res) == 5 else "N/A")
     print(f"Saved predictions to {pred_path}")
     print("="*40)
 

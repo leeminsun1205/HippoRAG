@@ -189,6 +189,10 @@ class BaseConfig:
         default=3.0,
         metadata={"help": "D3 decay scale in YEARS for the temporal-proximity weight (Gaussian exp(-(delta_years/tau)^2)). Smaller = sharper scoping to the question's time. Default 3.0."}
     )
+    info_filter: bool = field(
+        default=False,
+        metadata={"help": "Information filtering (opt-in, default False = original behavior). Adapted from DyG-RAG's 'explicit subject, no pronouns' rule: before building the graph, drop degenerate triples whose subject or object is a bare pronoun/stopword, empty, or too short. Changes the graph -> separate working dir (main.py appends _if). Conservative; meant to reduce noisy edges."}
+    )
 
 
 

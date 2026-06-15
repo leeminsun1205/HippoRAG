@@ -104,12 +104,13 @@ def report(label, agg):
     cats = sorted(agg.keys())
     tot = {k: sum(agg[c][k] for c in cats) for k in ("n", "acc", "rec", "em", "f1")}
     print(f"\n=== {label} ===")
-    print(f"  {'category':<20} {'n':>5}  {'Acc↑':>6} {'Recall↑':>7}  {'EM':>6} {'F1':>6}")
+    print(f"  {'category':<20} {'n':>5}  {'Acc%↑':>6} {'Recall%↑':>7}  {'EM%':>6} {'F1%':>6}")
 
     def row(name, a):
         n = a["n"] or 1
-        return (f"  {name:<20} {a['n']:>5}  {a['acc']/n:6.3f} {a['rec']/n:7.3f}  "
-                f"{a['em']/n:6.3f} {a['f1']/n:6.3f}")
+        # Display as percentages (x100).
+        return (f"  {name:<20} {a['n']:>5}  {100*a['acc']/n:6.2f} {100*a['rec']/n:7.2f}  "
+                f"{100*a['em']/n:6.2f} {100*a['f1']/n:6.2f}")
 
     for c in cats:
         print(row(c, agg[c]))

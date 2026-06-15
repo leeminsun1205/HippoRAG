@@ -234,6 +234,29 @@ class HippoRAG:
         return year * 10000 + month * 100 + day
 
 
+    # Bare pronouns / stopwords that signal an unresolved or low-information
+    # triple subject/object (text is already lower-cased by text_processing).
+    _LOW_INFO_TOKENS = frozenset({
+        "he", "she", "it", "they", "them", "him", "her", "his", "its", "their",
+        "we", "us", "you", "i", "me", "my", "our", "this", "that", "these",
+        "those", "there", "here", "one", "who", "which", "what",
+    })
+
+    def _is_informative_triple(self, triple) -> bool:
+        """Information filtering (DyG-inspired 'explicit subject, no pronouns').
+
+        Conservative: drops a triple only if its subject or object is empty,
+        a single character, or a bare pronoun/stopword. Keeps everything else,
+        so we remove clearly low-information edges without pruning real facts.
+        """
+        if len(triple) < 3:
+            return False
+        for x in (str(triple[0]).strip(), str(triple[2]).strip()):
+            if len(x) < 2 or x in self._LOW_INFO_TOKENS:
+                return False
+        return True
+
+
     def _extract_fact_times(self, chunk_ids: List[str], chunk_triples: List[List]) -> Dict[str, List[int]]:
         """D1: ask the LLM to assign a timestamp to each extracted triple.
 
@@ -506,6 +529,16 @@ class HippoRAG:
         chunk_ids = list(chunk_to_rows.keys())
 
         chunk_triples = [[text_processing(t) for t in triple_results_dict[chunk_id].triples] for chunk_id in chunk_ids]
+
+        # Information filtering (opt-in): drop low-information / pronoun triples
+        # before they become graph edges. Done here so entity nodes, facts, and
+        # D1 time anchors all operate on the filtered set.
+        if self.global_config.info_filter:
+            before = sum(len(t) for t in chunk_triples)
+            chunk_triples = [[t for t in trips if self._is_informative_triple(t)] for trips in chunk_triples]
+            after = sum(len(t) for t in chunk_triples)
+            logger.info(f"info_filter: kept {after}/{before} triples (dropped {before - after} low-information)")
+
         entity_nodes, chunk_triple_entities = extract_entity_nodes(chunk_triples)
         facts = flatten_facts(chunk_triples)
 
