@@ -135,18 +135,18 @@ def main():
                         help='D2 (opt-in). If True, retrieved facts are ordered chronologically into a timeline prepended to the QA prompt with a temporal-reasoning instruction (DyG-RAG Time-CoT). QA-time only; reuses the same working dir. Pair with --fact_time_anchor for real timestamps. Default false = original behavior.')
     parser.add_argument('--time_scoped', type=str, default='false',
                         help='D3 (opt-in). If True, fact scores are weighted by temporal proximity to the year asked in the question (scopes to the asked time, not newest). Retrieval-time only; reuses the same working dir. Pair with --fact_time_anchor for real timestamps. Default false = original behavior.')
-    parser.add_argument('--time_scope_tau', type=float, default=3.0,
-                        help='D3 Gaussian decay scale in years for temporal proximity. Smaller = sharper scoping. Default 3.0.')
+    parser.add_argument('--time_scope_decay_rate', type=float, default=0.01,
+                        help='D3 time-proximity decay PER DAY: exp(-decay_rate*|Δdays|) (mirrors DyG-RAG). Default 0.01; sharp on year-granular data, tune down (e.g. 0.002) if it over-suppresses.')
     parser.add_argument('--info_filter', type=str, default='false',
                         help='Information filtering (opt-in). If True, drop degenerate triples (bare pronoun/stopword/empty subject or object) before building the graph (DyG-RAG style). Changes the graph -> separate working dir (_if suffix). Default false = original behavior.')
     parser.add_argument('--temporal_edges', type=str, default='false',
                         help='A (opt-in). If True, add temporal-proximity edges to the graph (DyG-RAG event-graph style): connect entities linked to a shared hub at close points in time, so PPR can chain facts within a period. Requires --fact_time_anchor for real times. Changes the graph -> separate working dir (_te suffix). Default false = original behavior.')
-    parser.add_argument('--temporal_edge_window', type=float, default=2.0,
-                        help='A: connect facts within this many YEARS of each other. Default 2.0.')
-    parser.add_argument('--temporal_edge_alpha', type=float, default=0.5,
-                        help='A: decay rate exp(-alpha*|Δyears|) for temporal edge weight. Default 0.5.')
+    parser.add_argument('--temporal_edge_decay_rate', type=float, default=0.01,
+                        help='A: time-weight decay PER DAY, exp(-decay_rate*|Δdays|) (DyG-RAG default 0.01).')
+    parser.add_argument('--temporal_edge_max_links', type=int, default=3,
+                        help='A: keep top-N temporally-closest co-entity neighbors per fact (DyG-RAG default 3).')
     parser.add_argument('--temporal_edge_weight', type=float, default=1.0,
-                        help='A: overall scale for temporal-proximity edge weights. Default 1.0.')
+                        help='A: extra overall scale on combined_score when writing into the entity graph (not a DyG param; tune for PPR). Default 1.0.')
     args = parser.parse_args()
 
     dataset_name = args.dataset
@@ -239,11 +239,11 @@ def main():
         fact_time_anchor=string_to_bool(args.fact_time_anchor),
         time_cot=string_to_bool(args.time_cot),
         time_scoped=string_to_bool(args.time_scoped),
-        time_scope_tau=args.time_scope_tau,
+        time_scope_decay_rate=args.time_scope_decay_rate,
         info_filter=string_to_bool(args.info_filter),
         temporal_edges=string_to_bool(args.temporal_edges),
-        temporal_edge_window=args.temporal_edge_window,
-        temporal_edge_alpha=args.temporal_edge_alpha,
+        temporal_edge_decay_rate=args.temporal_edge_decay_rate,
+        temporal_edge_max_links=args.temporal_edge_max_links,
         temporal_edge_weight=args.temporal_edge_weight
     )
 

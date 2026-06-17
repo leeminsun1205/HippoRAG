@@ -179,6 +179,7 @@ class HippoRAG:
         # D3 (time_scoped): per-fact timestamps aligned to self.fact_node_keys,
         # filled in prepare_retrieval_objects only when time_scoped is on.
         self.fact_times = None
+        self.fact_day_ordinals = None  # day-ordinal version of fact_times (for exp-per-day proximity)
 
 
     def _update_edge_meta(self, edge: Tuple[str, str], t_time, t_prov):
@@ -242,19 +243,50 @@ class HippoRAG:
         "those", "there", "here", "one", "who", "which", "what",
     })
 
-    def _is_informative_triple(self, triple) -> bool:
-        """Information filtering (DyG-inspired 'explicit subject, no pronouns').
+    # State-change / action verbs used by DyG-RAG's information-value filter.
+    _STATE_VERBS = frozenset({
+        "became", "become", "becomes", "resigned", "appointed", "elected", "joined",
+        "founded", "established", "born", "died", "married", "divorced", "won", "lost",
+        "launched", "released", "moved", "promoted", "demoted", "replaced", "succeeded",
+        "retired", "graduated", "signed", "acquired", "merged", "opened", "closed",
+        "named", "awarded", "defeated", "created", "formed", "served", "started",
+        "ended", "left", "hired", "fired", "published", "built", "destroyed",
+        "captured", "conquered", "appointed", "nominated", "assumed", "took", "stepped",
+    })
 
-        Conservative: drops a triple only if its subject or object is empty,
-        a single character, or a bare pronoun/stopword. Keeps everything else,
-        so we remove clearly low-information edges without pruning real facts.
+    def _is_informative_triple(self, triple) -> bool:
+        """Information filtering, faithful to DyG-RAG's two-part rule.
+
+        HARD rule ('explicit subject, no pronouns'): drop a triple whose subject
+        or object is empty, a single character, or a bare pronoun/stopword.
+
+        SOFT info-value score (DyG keeps a candidate if score >= 1), with cheap
+        proxies for the 4 criteria: specific actor (both endpoints substantive),
+        action/state-change verb in the predicate, quantitative (a digit), and
+        temporal anchoring (a 4-digit year in the text). NOTE: on HippoRAG's
+        already-structured triples the actor proxy is almost always satisfied,
+        so this score rarely removes anything beyond the hard rule -- the
+        structured extraction already did most of DyG's sentence-level filtering.
         """
         if len(triple) < 3:
             return False
-        for x in (str(triple[0]).strip(), str(triple[2]).strip()):
+        subj, obj = str(triple[0]).strip(), str(triple[2]).strip()
+        for x in (subj, obj):
             if len(x) < 2 or x in self._LOW_INFO_TOKENS:
                 return False
-        return True
+
+        pred = str(triple[1]).lower()
+        text = f"{subj} {pred} {obj}".lower()
+        score = 0
+        if subj.lower() not in self._LOW_INFO_TOKENS and obj.lower() not in self._LOW_INFO_TOKENS:
+            score += 1  # specific actor (definite subject/object)
+        if any(w in self._STATE_VERBS for w in pred.split()):
+            score += 1  # action / state-change verb
+        if any(ch.isdigit() for ch in text):
+            score += 1  # quantitative
+        if re.search(r"\b(1\d{3}|2\d{3})\b", text):
+            score += 1  # temporal anchoring (year)
+        return score >= 1
 
 
     def _extract_fact_times(self, chunk_ids: List[str], chunk_triples: List[List]) -> Dict[str, List[int]]:
@@ -369,25 +401,25 @@ class HippoRAG:
         return int(years[-1]) * 10000 if years else 0
 
     def _apply_time_scope(self, query: str, query_fact_scores: np.ndarray) -> np.ndarray:
-        """D3: multiply fact scores by a Gaussian temporal-proximity weight.
+        """D3: multiply fact scores by an exponential temporal-proximity weight,
+        per DAY (mirrors DyG-RAG's time decay): proximity = exp(-decay_rate*|Δdays|)
+        between the fact time and the year the question asks about.
 
-        Facts whose edge timestamp is near the year the question asks about are
-        kept; time-mismatched facts are down-weighted. Facts with no real time
-        (<=0) and queries with no parseable year stay neutral (x1.0), so this
-        never penalizes the static / no-time case.
+        Facts with no real time (<=0) and queries with no parseable year stay
+        neutral (x1.0), so this never penalizes the static / no-time case.
         """
         scores = np.asarray(query_fact_scores)
-        if self.fact_times is None or scores.ndim == 0 or len(self.fact_times) != scores.shape[0]:
+        if (self.fact_times is None or self.fact_day_ordinals is None
+                or scores.ndim == 0 or len(self.fact_times) != scores.shape[0]):
             return query_fact_scores
-        q_t = self._parse_query_year(query)
+        q_t = self._parse_query_year(query)  # YYYY0000, 0 if no year
         if q_t <= 0:
             return query_fact_scores
 
-        tau = max(self.global_config.time_scope_tau, 1e-6)
-        ft = self.fact_times  # YYYYMMDD ints, 0 = no real time
-        delta_years = np.abs(ft - q_t) / 10000.0
-        proximity = np.exp(-((delta_years / tau) ** 2))
-        proximity = np.where(ft > 0, proximity, 1.0)  # no-time facts stay neutral
+        q_days = self._ymd_to_days(q_t)
+        decay = self.global_config.time_scope_decay_rate
+        proximity = np.exp(-decay * np.abs(self.fact_day_ordinals - q_days))
+        proximity = np.where(self.fact_times > 0, proximity, 1.0)  # no-time facts neutral
         return scores * proximity
 
     @staticmethod
@@ -1118,62 +1150,86 @@ class HippoRAG:
                 for node in entities_in_chunk:
                     self.ent_node_to_chunk_ids[node] = self.ent_node_to_chunk_ids.get(node, set()).union(set([chunk_key]))
 
+    @staticmethod
+    def _ymd_to_days(ymd: int) -> float:
+        """Approximate ordinal day number from a YYYYMMDD int (for |Δdays|).
+        Month/day = 0 (year-only / month-only times) are treated as 1."""
+        year = ymd // 10000
+        month = (ymd // 100) % 100 or 1
+        day = ymd % 100 or 1
+        return year * 365.0 + month * 30.0 + day
+
     def add_temporal_edges(self, chunk_ids: List[str], chunk_triples: List[Tuple]):
-        """A: temporal-proximity edges (adapted from DyG-RAG's event graph).
-
-        For every entity that acts as a hub (appears in several facts), connect
-        the *other* endpoints of pairs of those facts when the facts are close in
-        time (|Δyears| <= window), with weight scale * exp(-alpha * |Δyears|).
-        This builds temporal bridges so PPR can chain facts within the same
-        period -- targeting HippoRAG's time-blind multi-hop. Edge weights are
-        added on top of the existing count-based fact edges in node_to_node_stats.
-
-        Requires real per-fact timestamps (self.fact_time_map, from D1); without
-        them no edge is added. Per-hub fact list is capped to bound the O(m^2) cost.
+        """A: temporal-proximity edges, faithful to DyG-RAG's event graph
+        (graphrag/_op.py EventRelationshipConfig). Each triple is treated as a
+        pseudo-event with entities {subject, object} and a per-fact time (D1).
+        For each fact we find co-entity facts, score each by DyG's formula:
+            entity_weight = min(1, entity_factor * #common_entities)
+            time_weight   = time_factor * exp(-decay_rate * |Δdays|)
+            combined      = entity_ratio*entity_weight + time_ratio*time_weight
+        keep the top `max_links`, and bridge their non-shared entities so PPR can
+        chain temporally-close facts (no hard time window -- soft decay + top-N,
+        as in DyG). DIVERGENCE: DyG links event NODES; HippoRAG has no event
+        nodes, so we connect the entities instead (entity-graph adaptation).
+        Requires real per-fact timestamps; no-op without D1.
         """
-        window = self.global_config.temporal_edge_window
-        alpha = self.global_config.temporal_edge_alpha
-        scale = self.global_config.temporal_edge_weight
-        cap = 50  # max facts per hub entity considered (bounds O(m^2) on hubs)
+        cfg = self.global_config
+        decay, ent_factor = cfg.temporal_edge_decay_rate, cfg.temporal_edge_entity_factor
+        ent_ratio, time_ratio = cfg.temporal_edge_entity_ratio, cfg.temporal_edge_time_ratio
+        time_factor, max_links = cfg.temporal_edge_time_factor, cfg.temporal_edge_max_links
+        scale = cfg.temporal_edge_weight
+        cand_cap = 200  # bound candidates per fact (hub entities)
 
-        # hub entity key -> list of (year_float, other_entity_key)
-        hub = defaultdict(list)
+        # pseudo-events: (frozenset of entity keys, day_ordinal)
+        events = []
         for chunk_key, triples in zip(chunk_ids, chunk_triples):
             times = self.fact_time_map.get(chunk_key, [])
             for t_idx, triple in enumerate(triples):
                 t = times[t_idx] if t_idx < len(times) else 0
                 if not (isinstance(t, (int, float)) and t > 0):
                     continue
-                ty = t / 10000.0  # YYYYMMDD int -> approx year (for Δ in years)
                 s_key = compute_mdhash_id(content=triple[0], prefix=("entity-"))
                 o_key = compute_mdhash_id(content=triple[2], prefix=("entity-"))
-                hub[s_key].append((ty, o_key))
-                hub[o_key].append((ty, s_key))
+                events.append((frozenset({s_key, o_key}), self._ymd_to_days(int(t))))
+
+        ent_to_ev = defaultdict(list)
+        for ei, (ents, _) in enumerate(events):
+            for e in ents:
+                ent_to_ev[e].append(ei)
 
         n_edges = 0
-        for lst in hub.values():
-            if len(lst) < 2:
-                continue
-            if len(lst) > cap:
-                lst = sorted(lst)[:cap]
-            for i in range(len(lst)):
-                ti, a = lst[i]
-                for j in range(i + 1, len(lst)):
-                    tj, b = lst[j]
-                    if a == b:
-                        continue
-                    dt = abs(ti - tj)
-                    if dt > window:
-                        continue
-                    w = float(scale * np.exp(-alpha * dt))
-                    self.node_to_node_stats[(a, b)] = self.node_to_node_stats.get((a, b), 0.0) + w
-                    self.node_to_node_stats[(b, a)] = self.node_to_node_stats.get((b, a), 0.0) + w
-                    edge_time = int(max(ti, tj) * 10000)
-                    self._update_edge_meta((a, b), edge_time, 'temporal_edge')
-                    self._update_edge_meta((b, a), edge_time, 'temporal_edge')
-                    n_edges += 1
-        logger.info(f"temporal_edges: added/strengthened {n_edges} edges "
-                    f"(window={window}y, alpha={alpha}, scale={scale})")
+        for i, (ents_i, day_i) in enumerate(events):
+            cand = set()
+            for e in ents_i:
+                cand.update(ent_to_ev[e])
+            cand.discard(i)
+            if len(cand) > cand_cap:
+                cand = set(list(cand)[:cand_cap])
+
+            scored = []
+            for j in cand:
+                ents_j, day_j = events[j]
+                common = ents_i & ents_j
+                if not common:
+                    continue
+                ent_w = min(1.0, ent_factor * len(common))
+                time_w = time_factor * float(np.exp(-decay * abs(day_i - day_j)))
+                combined = ent_ratio * ent_w + time_ratio * time_w
+                scored.append((combined, j, common))
+            scored.sort(key=lambda x: x[0], reverse=True)
+
+            for combined, j, common in scored[:max_links]:
+                ents_j = events[j][0]
+                for a in (ents_i - common):
+                    for b in (ents_j - common):
+                        if a == b:
+                            continue
+                        w = float(scale * combined)
+                        self.node_to_node_stats[(a, b)] = self.node_to_node_stats.get((a, b), 0.0) + w
+                        self.node_to_node_stats[(b, a)] = self.node_to_node_stats.get((b, a), 0.0) + w
+                        n_edges += 1
+        logger.info(f"temporal_edges: added/strengthened {n_edges} edges over {len(events)} timed facts "
+                    f"(decay={decay}/day, max_links={max_links}, ent/time ratio={ent_ratio}/{time_ratio}, scale={scale})")
 
     def add_passage_edges(self, chunk_ids: List[str], chunk_triple_entities: List[List[str]]):
         """
@@ -1627,6 +1683,12 @@ class HippoRAG:
                 except Exception:
                     times[i] = 0
             self.fact_times = times
+            # day-ordinal version (vectorized _ymd_to_days) for exp-per-day proximity.
+            ti = times.astype(np.int64)
+            yr, mo, dy = ti // 10000, (ti // 100) % 100, ti % 100
+            mo = np.where(mo == 0, 1, mo)
+            dy = np.where(dy == 0, 1, dy)
+            self.fact_day_ordinals = yr * 365.0 + mo * 30.0 + dy  # (ft<=0 entries masked at use)
             logger.info(f"time_scoped on: {(times > 0).sum()}/{len(times)} facts have a real timestamp")
 
         all_openie_info, chunk_keys_to_process = self.load_existing_openie([])

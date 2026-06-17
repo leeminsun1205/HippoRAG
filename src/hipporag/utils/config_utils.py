@@ -185,9 +185,9 @@ class BaseConfig:
         default=False,
         metadata={"help": "D3 (opt-in, default False = original behavior). If True, fact scores are multiplied by a temporal-proximity weight: facts whose edge timestamp is near the time the question asks about (parsed from the query) are boosted relative to time-mismatched ones. UNLIKE recency (temporal_weighting=newest-wins), this scopes to the *asked* time. Retrieval-time only -- reuses the existing graph/working dir. Facts with no real time, or queries with no parseable year, are left neutral (x1.0). Pair with fact_time_anchor for real per-fact times."}
     )
-    time_scope_tau: float = field(
-        default=3.0,
-        metadata={"help": "D3 decay scale in YEARS for the temporal-proximity weight (Gaussian exp(-(delta_years/tau)^2)). Smaller = sharper scoping to the question's time. Default 3.0."}
+    time_scope_decay_rate: float = field(
+        default=0.01,
+        metadata={"help": "D3 time-proximity decay PER DAY (mirrors DyG-RAG): proximity = exp(-decay_rate * |Δdays|) between the fact time and the year the question asks about. DyG uses ~0.01 (edge) / 0.02 (query); 0.01 default here. NOTE: sharp on year-granular data (1yr≈365d → exp(-3.65)≈0.026), tune down (e.g. 0.002) if it over-suppresses multi-year facts."}
     )
     info_filter: bool = field(
         default=False,
@@ -197,17 +197,34 @@ class BaseConfig:
         default=False,
         metadata={"help": "A: temporal-proximity edges (opt-in, default False). Adapted from DyG-RAG's event graph: add/strengthen entity-entity edges between two entities that are each linked to a shared hub entity at close points in TIME (a temporal bridge that lets PPR chain facts within the same period). Weight = temporal_edge_weight * exp(-temporal_edge_alpha * |Δyears|), only within temporal_edge_window years. Requires real per-fact timestamps (pair with fact_time_anchor). Changes the graph -> separate working dir (main.py appends _te). Targets HippoRAG's time-blind multi-hop weakness."}
     )
-    temporal_edge_window: float = field(
-        default=2.0,
-        metadata={"help": "A: only connect facts whose timestamps are within this many YEARS of each other. Default 2.0."}
+    # A: values mirror DyG-RAG's EventRelationshipConfig (graphrag/_op.py).
+    temporal_edge_decay_rate: float = field(
+        default=0.01,
+        metadata={"help": "A: time-weight decay PER DAY: time_weight = time_factor*exp(-decay_rate*|Δdays|). DyG-RAG default 0.01."}
     )
-    temporal_edge_alpha: float = field(
-        default=0.5,
-        metadata={"help": "A: decay rate for the temporal edge weight exp(-alpha*|Δyears|). Larger = sharper time locality. Default 0.5."}
+    temporal_edge_entity_factor: float = field(
+        default=0.2,
+        metadata={"help": "A: entity_weight = min(1, entity_factor*#common_entities). DyG-RAG default 0.2."}
+    )
+    temporal_edge_entity_ratio: float = field(
+        default=0.6,
+        metadata={"help": "A: weight of entity term in combined_score = entity_ratio*entity_weight + time_ratio*time_weight. DyG-RAG default 0.6."}
+    )
+    temporal_edge_time_ratio: float = field(
+        default=0.4,
+        metadata={"help": "A: weight of time term in combined_score. DyG-RAG default 0.4."}
+    )
+    temporal_edge_time_factor: float = field(
+        default=1.0,
+        metadata={"help": "A: max time_weight (multiplier on the exp decay). DyG-RAG default 1.0."}
+    )
+    temporal_edge_max_links: int = field(
+        default=3,
+        metadata={"help": "A: keep the top-N temporally-closest co-entity neighbors per fact (DyG-RAG max_links default 3). No hard time window -- soft decay + top-N, as in DyG."}
     )
     temporal_edge_weight: float = field(
         default=1.0,
-        metadata={"help": "A: overall scale multiplier for temporal-proximity edge weights (relative to the count-based fact edges). Default 1.0."}
+        metadata={"help": "A: our extra overall scale on the combined_score when writing into the entity graph (1.0 = use combined_score directly; tune up/down for HippoRAG's PPR). Not a DyG param."}
     )
 
 
