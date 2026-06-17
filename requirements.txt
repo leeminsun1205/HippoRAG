@@ -4,6 +4,9 @@ vllm==0.6.6.post1
 gritlm==1.0.2
 torch==2.5.1
 transformers==4.45.2
+# Pin <5: sentence-transformers 5.x imports torchcodec (audio/video), which needs
+# FFmpeg shared libs and a matching torch build -> breaks on Kaggle (torch 2.5.1).
+sentence-transformers<5
 networkx==3.4.2
 pydantic==2.10.4
 python_igraph==0.11.8
