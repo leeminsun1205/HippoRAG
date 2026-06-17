@@ -560,6 +560,10 @@ class HippoRAG:
         self.ent_node_to_chunk_ids = {}
 
         self.add_fact_edges(chunk_ids, chunk_triples)
+        # A: temporal-proximity edges (opt-in). Adds to node_to_node_stats before
+        # the graph is materialized in augment_graph(). Needs per-fact times (D1).
+        if self.global_config.temporal_edges:
+            self.add_temporal_edges(chunk_ids, chunk_triples)
         num_new_chunks = self.add_passage_edges(chunk_ids, chunk_triple_entities)
 
         if num_new_chunks > 0:
@@ -1113,6 +1117,63 @@ class HippoRAG:
 
                 for node in entities_in_chunk:
                     self.ent_node_to_chunk_ids[node] = self.ent_node_to_chunk_ids.get(node, set()).union(set([chunk_key]))
+
+    def add_temporal_edges(self, chunk_ids: List[str], chunk_triples: List[Tuple]):
+        """A: temporal-proximity edges (adapted from DyG-RAG's event graph).
+
+        For every entity that acts as a hub (appears in several facts), connect
+        the *other* endpoints of pairs of those facts when the facts are close in
+        time (|Δyears| <= window), with weight scale * exp(-alpha * |Δyears|).
+        This builds temporal bridges so PPR can chain facts within the same
+        period -- targeting HippoRAG's time-blind multi-hop. Edge weights are
+        added on top of the existing count-based fact edges in node_to_node_stats.
+
+        Requires real per-fact timestamps (self.fact_time_map, from D1); without
+        them no edge is added. Per-hub fact list is capped to bound the O(m^2) cost.
+        """
+        window = self.global_config.temporal_edge_window
+        alpha = self.global_config.temporal_edge_alpha
+        scale = self.global_config.temporal_edge_weight
+        cap = 50  # max facts per hub entity considered (bounds O(m^2) on hubs)
+
+        # hub entity key -> list of (year_float, other_entity_key)
+        hub = defaultdict(list)
+        for chunk_key, triples in zip(chunk_ids, chunk_triples):
+            times = self.fact_time_map.get(chunk_key, [])
+            for t_idx, triple in enumerate(triples):
+                t = times[t_idx] if t_idx < len(times) else 0
+                if not (isinstance(t, (int, float)) and t > 0):
+                    continue
+                ty = t / 10000.0  # YYYYMMDD int -> approx year (for Δ in years)
+                s_key = compute_mdhash_id(content=triple[0], prefix=("entity-"))
+                o_key = compute_mdhash_id(content=triple[2], prefix=("entity-"))
+                hub[s_key].append((ty, o_key))
+                hub[o_key].append((ty, s_key))
+
+        n_edges = 0
+        for lst in hub.values():
+            if len(lst) < 2:
+                continue
+            if len(lst) > cap:
+                lst = sorted(lst)[:cap]
+            for i in range(len(lst)):
+                ti, a = lst[i]
+                for j in range(i + 1, len(lst)):
+                    tj, b = lst[j]
+                    if a == b:
+                        continue
+                    dt = abs(ti - tj)
+                    if dt > window:
+                        continue
+                    w = float(scale * np.exp(-alpha * dt))
+                    self.node_to_node_stats[(a, b)] = self.node_to_node_stats.get((a, b), 0.0) + w
+                    self.node_to_node_stats[(b, a)] = self.node_to_node_stats.get((b, a), 0.0) + w
+                    edge_time = int(max(ti, tj) * 10000)
+                    self._update_edge_meta((a, b), edge_time, 'temporal_edge')
+                    self._update_edge_meta((b, a), edge_time, 'temporal_edge')
+                    n_edges += 1
+        logger.info(f"temporal_edges: added/strengthened {n_edges} edges "
+                    f"(window={window}y, alpha={alpha}, scale={scale})")
 
     def add_passage_edges(self, chunk_ids: List[str], chunk_triple_entities: List[List[str]]):
         """

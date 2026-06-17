@@ -139,6 +139,14 @@ def main():
                         help='D3 Gaussian decay scale in years for temporal proximity. Smaller = sharper scoping. Default 3.0.')
     parser.add_argument('--info_filter', type=str, default='false',
                         help='Information filtering (opt-in). If True, drop degenerate triples (bare pronoun/stopword/empty subject or object) before building the graph (DyG-RAG style). Changes the graph -> separate working dir (_if suffix). Default false = original behavior.')
+    parser.add_argument('--temporal_edges', type=str, default='false',
+                        help='A (opt-in). If True, add temporal-proximity edges to the graph (DyG-RAG event-graph style): connect entities linked to a shared hub at close points in time, so PPR can chain facts within a period. Requires --fact_time_anchor for real times. Changes the graph -> separate working dir (_te suffix). Default false = original behavior.')
+    parser.add_argument('--temporal_edge_window', type=float, default=2.0,
+                        help='A: connect facts within this many YEARS of each other. Default 2.0.')
+    parser.add_argument('--temporal_edge_alpha', type=float, default=0.5,
+                        help='A: decay rate exp(-alpha*|Δyears|) for temporal edge weight. Default 0.5.')
+    parser.add_argument('--temporal_edge_weight', type=float, default=1.0,
+                        help='A: overall scale for temporal-proximity edge weights. Default 1.0.')
     args = parser.parse_args()
 
     dataset_name = args.dataset
@@ -159,6 +167,8 @@ def main():
         save_dir = save_dir + '_ft'
     if string_to_bool(args.info_filter):
         save_dir = save_dir + '_if'
+    if string_to_bool(args.temporal_edges):
+        save_dir = save_dir + '_te'
 
     # Convenience: for a derived dir (_ft and/or _if), reuse the BASE (plain) OpenIE
     # cache if it exists, so the graph is built from the SAME triples as the baseline
@@ -167,9 +177,13 @@ def main():
     # otherwise make the derived graph differ from the baseline. Skipped if the user
     # forces a fresh OpenIE run, or if the derived cache already exists.
     _base_save_dir = save_dir
-    for _suf in ("_if", "_ft"):
-        if _base_save_dir.endswith(_suf):
-            _base_save_dir = _base_save_dir[:-len(_suf)]
+    _stripped = True
+    while _stripped:
+        _stripped = False
+        for _suf in ("_te", "_if", "_ft"):
+            if _base_save_dir.endswith(_suf):
+                _base_save_dir = _base_save_dir[:-len(_suf)]
+                _stripped = True
     if (_base_save_dir != save_dir) and not string_to_bool(args.force_openie_from_scratch):
         _openie_fname = f'openie_results_ner_{args.llm_name.replace("/", "_")}.json'
         _derived_openie = os.path.join(save_dir, _openie_fname)
@@ -226,7 +240,11 @@ def main():
         time_cot=string_to_bool(args.time_cot),
         time_scoped=string_to_bool(args.time_scoped),
         time_scope_tau=args.time_scope_tau,
-        info_filter=string_to_bool(args.info_filter)
+        info_filter=string_to_bool(args.info_filter),
+        temporal_edges=string_to_bool(args.temporal_edges),
+        temporal_edge_window=args.temporal_edge_window,
+        temporal_edge_alpha=args.temporal_edge_alpha,
+        temporal_edge_weight=args.temporal_edge_weight
     )
 
     logging.basicConfig(level=logging.INFO)

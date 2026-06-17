@@ -193,6 +193,22 @@ class BaseConfig:
         default=False,
         metadata={"help": "Information filtering (opt-in, default False = original behavior). Adapted from DyG-RAG's 'explicit subject, no pronouns' rule: before building the graph, drop degenerate triples whose subject or object is a bare pronoun/stopword, empty, or too short. Changes the graph -> separate working dir (main.py appends _if). Conservative; meant to reduce noisy edges."}
     )
+    temporal_edges: bool = field(
+        default=False,
+        metadata={"help": "A: temporal-proximity edges (opt-in, default False). Adapted from DyG-RAG's event graph: add/strengthen entity-entity edges between two entities that are each linked to a shared hub entity at close points in TIME (a temporal bridge that lets PPR chain facts within the same period). Weight = temporal_edge_weight * exp(-temporal_edge_alpha * |Δyears|), only within temporal_edge_window years. Requires real per-fact timestamps (pair with fact_time_anchor). Changes the graph -> separate working dir (main.py appends _te). Targets HippoRAG's time-blind multi-hop weakness."}
+    )
+    temporal_edge_window: float = field(
+        default=2.0,
+        metadata={"help": "A: only connect facts whose timestamps are within this many YEARS of each other. Default 2.0."}
+    )
+    temporal_edge_alpha: float = field(
+        default=0.5,
+        metadata={"help": "A: decay rate for the temporal edge weight exp(-alpha*|Δyears|). Larger = sharper time locality. Default 0.5."}
+    )
+    temporal_edge_weight: float = field(
+        default=1.0,
+        metadata={"help": "A: overall scale multiplier for temporal-proximity edge weights (relative to the count-based fact edges). Default 1.0."}
+    )
 
 
 
