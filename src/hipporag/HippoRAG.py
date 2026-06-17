@@ -181,6 +181,12 @@ class HippoRAG:
         self.fact_times = None
         self.fact_day_ordinals = None  # day-ordinal version of fact_times (for exp-per-day proximity)
 
+        # D2/D3: per-FACT timestamps keyed by triple text {str(tuple(triple)): time_int}.
+        # Built in index() from fact_time_map; distinguishes facts that share an
+        # entity pair (avoids the edge-level latest-wins collapse). Persisted to
+        # fact_time_by_text.json and lazy-loaded for retrieval-only sessions.
+        self.fact_time_by_text = {}
+
 
     def _update_edge_meta(self, edge: Tuple[str, str], t_time, t_prov):
         """Records the most recent (timestamp, provenance) for an edge.
@@ -388,6 +394,36 @@ class HippoRAG:
         t = self.graph.es[eid]['timestamp']
         return t if isinstance(t, (int, float)) else 0
 
+    @staticmethod
+    def _fact_text_key(fact) -> str:
+        """Canonical key for a fact's per-fact time lookup (normalizes list/tuple)."""
+        return str(tuple(fact[:3]))
+
+    def _ensure_fact_time_by_text(self):
+        """Lazy-load the per-fact {triple-string: time} map (fact_time_by_text.json)
+        for load-only sessions; no-op if already populated in this process."""
+        if self.fact_time_by_text:
+            return
+        path = os.path.join(self.working_dir, "fact_time_by_text.json")
+        if os.path.exists(path):
+            try:
+                with open(path, "r") as f:
+                    self.fact_time_by_text = json.load(f)
+            except Exception as e:
+                logger.warning(f"Could not load fact_time_by_text cache ({e}).")
+
+    def _fact_time(self, fact) -> int:
+        """Per-FACT timestamp (keyed by the triple text), used by D2/D3.
+
+        Unlike `_fact_edge_time` (which reads the entity-pair edge attribute and
+        collapses facts that share a subject/object pair to the latest time),
+        this distinguishes facts by their full triple -- e.g. (X, joined, Y)@2015
+        vs (X, resigned from, Y)@2022 keep their own times. Returns 0 if unknown."""
+        try:
+            return int(self.fact_time_by_text.get(self._fact_text_key(fact), 0))
+        except Exception:
+            return 0
+
 
     @staticmethod
     def _parse_query_year(query: str) -> int:
@@ -580,6 +616,25 @@ class HippoRAG:
             logger.info("Extracting per-fact time anchors (fact_time_anchor=True)")
             self.fact_time_map = self._extract_fact_times(chunk_ids, chunk_triples)
 
+            # Build the per-FACT time map (keyed by triple text) so D2/D3 use each
+            # fact's own time instead of the entity-pair edge time (which collapses
+            # facts sharing a subject/object pair to latest-wins). Persist for
+            # retrieval-only sessions.
+            self.fact_time_by_text = {}
+            for chunk_key, triples in zip(chunk_ids, chunk_triples):
+                times = self.fact_time_map.get(chunk_key, [])
+                for idx, triple in enumerate(triples):
+                    t = times[idx] if idx < len(times) else 0
+                    if isinstance(t, (int, float)) and t > 0:
+                        key = self._fact_text_key(triple)
+                        if int(t) > self.fact_time_by_text.get(key, 0):
+                            self.fact_time_by_text[key] = int(t)
+            try:
+                with open(os.path.join(self.working_dir, "fact_time_by_text.json"), "w") as f:
+                    json.dump(self.fact_time_by_text, f)
+            except Exception as e:
+                logger.warning(f"Could not write fact_time_by_text cache ({e}).")
+
         logger.info(f"Encoding Entities")
         self.entity_embedding_store.insert_strings(entity_nodes)
 
@@ -761,7 +816,7 @@ class HippoRAG:
             # can build a chronological timeline. Empty on DPR fallback.
             query_facts = None
             if self.global_config.time_cot:
-                query_facts = [[f[0], f[1], f[2], self._fact_edge_time(f)] for f in top_k_facts]
+                query_facts = [[f[0], f[1], f[2], self._fact_time(f)] for f in top_k_facts]
 
             retrieval_results.append(QuerySolution(question=query, docs=top_k_docs, doc_scores=sorted_doc_scores[:num_to_retrieve], facts=query_facts))
 
@@ -1672,14 +1727,18 @@ class HippoRAG:
 
         self.fact_embeddings = np.array(self.fact_embedding_store.get_embeddings(self.fact_node_keys))
 
-        # D3: precompute per-fact timestamps (aligned to fact_node_keys) once, by
-        # reading each fact's edge time from the graph. Only when time_scoped is on.
+        # D2/D3 use per-fact times keyed by triple text (load for retrieval-only sessions).
+        if self.global_config.time_cot or self.global_config.time_scoped:
+            self._ensure_fact_time_by_text()
+
+        # D3: precompute per-fact timestamps (aligned to fact_node_keys) once, using
+        # the per-FACT time (not the collapsed edge time). Only when time_scoped is on.
         if self.global_config.time_scoped:
             times = np.zeros(len(self.fact_node_keys))
             for i, key in enumerate(self.fact_node_keys):
                 try:
                     triple = ast.literal_eval(self.fact_embedding_store.get_row(key)["content"])
-                    times[i] = self._fact_edge_time(triple)
+                    times[i] = self._fact_time(triple)
                 except Exception:
                     times[i] = 0
             self.fact_times = times
